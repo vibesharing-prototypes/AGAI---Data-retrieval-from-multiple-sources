@@ -209,7 +209,7 @@ function SmartAssistPanel({
                 lineHeight: "16px",
               }}
             >
-              Smart Assist
+              Ask GovernAI
             </Typography>
           </Stack>
         </Box>
@@ -339,7 +339,7 @@ function SmartAssistPanel({
             onClick={onOpenAssistant}
             sx={{ borderRadius: "8px" /* radius/md */, borderColor: "#282e37", color: "#282e37" }}
           >
-            Open Smart Assist
+            Open Ask GovernAI
           </Button>
         </Box>
       </Box>

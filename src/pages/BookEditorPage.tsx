@@ -642,7 +642,7 @@ function ReviewBookTab({
     if (!doc) return PAGE_IMAGES;
     const imgs = [...PAGE_IMAGES];
     doc.pages.forEach((p, i) => {
-      const bookIdx = doc.bookStartPage - 1 + i;
+      const bookIdx = (doc.bookStartPage ?? 1) - 1 + i;
       if (bookIdx >= 0 && bookIdx < imgs.length) imgs[bookIdx] = p.image;
     });
     return imgs;
@@ -843,9 +843,13 @@ export default function BookEditorPage() {
   // scroll to the cited page. Keyed on location.key so it re-fires even when
   // navigating to the same pathname.
   useEffect(() => {
-    const state = location.state as
+    const sp = new URLSearchParams(location.search);
+    const fromQuery = sp.get("documentId")
+      ? { openTab: sp.get("openTab") ?? undefined, documentId: sp.get("documentId") as DocumentId, documentPage: Number(sp.get("documentPage")) || 1 }
+      : null;
+    const state = (location.state as
       | { openTab?: string; documentId?: DocumentId; documentPage?: number }
-      | null;
+      | null) ?? fromQuery;
     if (!state) return;
     if (state.openTab === "review") setActiveTab(1);
     if (state.documentId && DOCUMENTS[state.documentId]) {

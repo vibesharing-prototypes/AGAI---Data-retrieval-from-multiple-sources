@@ -39,12 +39,12 @@ interface AiFeature {
 
 const INITIAL_FEATURES: Record<string, AiFeature> = {
   smartAssist: {
-    name: "Smart Assist",
+    name: "Ask GovernAI",
     description: "Search board content with chat on the admin side",
     enabled: true,
   },
   aiBoardMember: {
-    name: "AI Board Member",
+    name: "Ask GovernAI",
     description: "Search board content with chat on the director side",
     enabled: true,
   },

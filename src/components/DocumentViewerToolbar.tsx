@@ -16,6 +16,8 @@ type Props = {
   onAgendaClick?: () => void;
   /** Show the View / Tools toggle pill (book reader only — omitted in the overlay doc preview). */
   showViewToggle?: boolean;
+  /** Show the Agenda button (default true). Hidden for non-book documents. */
+  showAgenda?: boolean;
   /** Distance from the bottom of the positioned container, in px. */
   bottomOffset?: number;
 };
@@ -28,6 +30,7 @@ export default function DocumentViewerToolbar({
   onZoomIndexChange,
   onAgendaClick,
   showViewToggle = false,
+  showAgenda = true,
   bottomOffset = 25,
 }: Props) {
   const { tokens: { semantic: { color } } } = useTheme();
@@ -121,9 +124,11 @@ export default function DocumentViewerToolbar({
         )}
 
         <Stack direction="row" alignItems="center" gap="8px">
-          <Button variant="text" sx={labelSx} onClick={onAgendaClick}>
-            Agenda
-          </Button>
+          {showAgenda && (
+            <Button variant="text" sx={labelSx} onClick={onAgendaClick}>
+              Agenda
+            </Button>
+          )}
 
           {/* Page navigation */}
           <Stack direction="row" alignItems="center" gap="8px">

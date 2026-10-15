@@ -59,7 +59,7 @@ interface PersonalizationPageProps {
 const PersonalizationPage = forwardRef<PersonalizationPageHandle, PersonalizationPageProps>(
 function PersonalizationPage({ open, onClose, onCancel, audience = "admin", hideHeader = false, onDirtyChange }, ref) {
   const { tokens: { semantic: { color } } } = useTheme();
-  const productName = audience === "director" ? "AI Board Member" : "Smart Assist";
+  const productName = "Ask GovernAI";
 
   const [form, setForm] = useState<PersonalizationState>(DEFAULT_STATE);
   const [snapshot, setSnapshot] = useState<PersonalizationState>(DEFAULT_STATE);

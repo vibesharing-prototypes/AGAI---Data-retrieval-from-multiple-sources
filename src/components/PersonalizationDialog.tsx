@@ -352,7 +352,7 @@ export function RoleField({
 }) {
   const { tokens: { semantic: { color } } } = useTheme();
   const roles = audience === "director" ? ROLES_DIRECTOR : ROLES_ADMIN;
-  const productName = audience === "director" ? "AI Board Member" : "Smart Assist";
+  const productName = "Ask GovernAI";
 
   return (
     <Autocomplete
@@ -618,7 +618,7 @@ interface PersonalizationDialogProps {
 
 export default function PersonalizationDialog({ open, onClose, audience = "admin" }: PersonalizationDialogProps) {
   const { tokens: { semantic: { color, radius } } } = useTheme();
-  const productName = audience === "director" ? "AI Board Member" : "Smart Assist";
+  const productName = "Ask GovernAI";
 
   const [form, setForm] = useState<PersonalizationState>(DEFAULT_STATE);
   const [snapshot, setSnapshot] = useState<PersonalizationState>(DEFAULT_STATE);

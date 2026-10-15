@@ -1,38 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { SectionHeader } from "@diligentcorp/atlas-react-bundle";
 
-import { AiBadge, AiInaccuracyDisclaimer } from "../components/AiDisclaimers.js";
-import BookMoreMenu from "../components/BookMoreMenu.js";
+import { AiBadge } from "../components/AiDisclaimers.js";
 import { BookStateIcon } from "../components/BookStateIcons.js";
 import DirectorHomeSearch from "../components/DirectorHomeSearch.js";
 import MaxWidthBody from "../components/MaxWidthBody.js";
 import SmartAssistOverlay from "../components/SmartAssistOverlay.js";
 import SmartAssistSidenav from "../components/SmartAssistSidenav.js";
 import { useSmartAssist } from "../context/SmartAssistContext.js";
-import { directorHomeBooks, type AdminBook } from "../data/mockData.js";
-import {
-  Box,
-  Button,
-  Collapse,
-  IconButton,
-  Stack,
-  Tab,
-  Tabs,
-  Typography,
-  useTheme,
-} from "@mui/material";
+import { directorHomeBooks } from "../data/mockData.js";
+import { Box, Button, Collapse, Stack, Typography, useTheme } from "@mui/material";
 
-// Sparkle Smart Summary action hidden in the table for now — keep the import
-// commented so it's easy to restore alongside the row IconButton below.
-// import AiSparkleIcon from "@diligentcorp/atlas-react-bundle/icons/AiSparkle";
-import ChartMapIcon from "@diligentcorp/atlas-react-bundle/icons/ChartMap";
+import ArrowLeftIcon from "@diligentcorp/atlas-react-bundle/icons/ArrowLeft";
+import ArrowRightIcon from "@diligentcorp/atlas-react-bundle/icons/ArrowRight";
 import CheckedIcon from "@diligentcorp/atlas-react-bundle/icons/Checked";
-import DashboardIcon from "@diligentcorp/atlas-react-bundle/icons/Dashboard";
-import ExpandDownIcon from "@diligentcorp/atlas-react-bundle/icons/ExpandDown";
-import ExpandRightIcon from "@diligentcorp/atlas-react-bundle/icons/ExpandRight";
-import ExpandUpIcon from "@diligentcorp/atlas-react-bundle/icons/ExpandUp";
-import MoreIcon from "@diligentcorp/atlas-react-bundle/icons/More";
+import ClipboardCheckIcon from "@diligentcorp/atlas-react-bundle/icons/ClipboardCheck";
+import InfoIcon from "@diligentcorp/atlas-react-bundle/icons/Info";
+import QuestionnairesIcon from "@diligentcorp/atlas-react-bundle/icons/Questionnaires";
 
 // ─── Typography helper ──────────────────────────────────────────────────────
 // Spread an Atlas semantic font token (e.g. tokens.semantic.font.text.md)
@@ -58,7 +42,7 @@ const textSx = (t: FontToken, weight?: number) => ({
 // (shared with the admin book list) is already filtered to `status:
 // "Published"`, so unpublished and archived books never appear here.
 
-const INITIAL_BOOKS_VISIBLE = 4;
+const UPCOMING_BOOKS_VISIBLE = 4;
 
 // One shared timeline so the hero, the panel slide, and the content reflow all
 // move together as a single cohesive motion (300ms, matching the panel's own
@@ -80,23 +64,6 @@ type CompetitorUpdate = {
   /** Optional — Explore tab uses this to align cards with the feed filter chips. */
   company?: "Marriott International" | "Hilton Worldwide Holdings Inc." | "Hyatt Hotels Corporation";
 };
-
-const competitorUpdates: CompetitorUpdate[] = [
-  {
-    title: "Computershare Posts Higher Fiscal 2025 Management Earnings, Lower Revenue",
-    source: "Market Screener - Latest",
-    date: "Aug 13, 2025",
-    description:
-      "Computershare Limited reported an increase in management earnings for fiscal year 2025, despite experiencing a decrease in revenue.",
-  },
-  {
-    title: "Computershare Posts Higher Fiscal 2025 Management Earnings, Lower Revenue",
-    source: "Market Screener - Latest",
-    date: "Aug 13, 2025",
-    description:
-      "Computershare Limited reported an increase in management earnings for fiscal year 2025, despite experiencing a decrease in revenue.",
-  },
-];
 
 const exploreCompetitorUpdates: CompetitorUpdate[] = [
   {
@@ -148,455 +115,448 @@ const feedFilters = [
   "Hyatt Hotels Corporation",
 ];
 
-// ─── BookRow ─────────────────────────────────────────────────────────────────
 
-function BookRow({
-  book,
-  isLast,
-  onClick,
-  onSmartSummary,
-  onSmartPrep,
+// ─── Review items ("Waiting for your review") ───────────────────────────────
+
+type ReviewItem = { id: string; title: string; published: string; status: string; href?: string };
+
+const REVIEW_TITLE =
+  "Global Enterprise Board Governance Coordination, Committee Approval Management, Strategic Decision Lifecycle";
+
+const approvalItems: ReviewItem[] = [0, 1, 2, 3].map((i) => ({
+  id: `approval-${i}`,
+  title: REVIEW_TITLE,
+  published: "06/03/2026",
+  status: "In progress",
+  href: "/decision-hub/approvals/cyber-investment-2026",
+}));
+const questionnaireItems: ReviewItem[] = [0, 1, 2, 3].map((i) => ({
+  id: `questionnaire-${i}`,
+  title: REVIEW_TITLE,
+  published: "06/03/2026",
+  status: "Not started",
+}));
+const QUESTIONNAIRE_COUNT = 12;
+
+// ─── HomeSection ─────────────────────────────────────────────────────────────
+// Divider + 24px gap + header row (title, optional trailing, action) + body.
+
+function HomeSection({
+  title,
+  titleAdornment,
+  action,
+  children,
 }: {
-  book: AdminBook;
-  isLast: boolean;
-  onClick?: () => void;
-  onSmartSummary?: () => void;
-  onSmartPrep?: () => void;
+  title: string;
+  titleAdornment?: React.ReactNode;
+  action?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   const {
     tokens: {
-      semantic: { color, radius, font, fontWeight },
-    },
-  } = useTheme();
-
-  const divider = `1px solid ${color.ui.divider.default.value}`;
-  const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null);
-
-  // All cells share the same 12px padding from Figma so cell vertical
-  // axes line up regardless of which row has the Approvals button.
-  const cellSx = {
-    px: "12px" /* spacing/1_5 */,
-    py: "12px" /* spacing/1_5 */,
-    minHeight: 64,
-    display: "flex",
-    alignItems: "center",
-  } as const;
-
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "stretch",
-        borderBottom: isLast ? "none" : divider,
-      }}
-    >
-      {/* Book title cell — grows to fill remaining space */}
-      <Box
-        sx={{
-          ...cellSx,
-          flex: 1,
-          minWidth: 240,
-          gap: "12px",
-          overflow: "hidden",
-        }}
-      >
-        <Box
-          sx={{
-            width: 40,
-            height: 40,
-            p: "4px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#F9F9FC" /* surface/variant-subtle */,
-            border: `1px solid ${color.ui.divider.default.value}`,
-            borderRadius: radius.md.value,
-            flexShrink: 0,
-          }}
-        >
-          <BookStateIcon status={book.status} />
-        </Box>
-        <Typography
-          component="button"
-          type="button"
-          onClick={onClick}
-          sx={{
-            ...textSx(font.text.md, fontWeight.emphasis.value),
-            // Pin to 14px — hard-coded so a deploy-time Atlas token update can't
-            // shrink the home table's book titles.
-            fontSize: "14px",
-            color: color.type.default.value,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            textAlign: "left",
-            background: "transparent",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            textDecoration: "none",
-            "&:hover": { textDecoration: "underline" },
-            "&:focus-visible": { outline: "2px solid #1C4EE4", outlineOffset: "2px", borderRadius: "2px" },
-          }}
-        >
-          {book.title}
-        </Typography>
-      </Box>
-
-      {/* Meeting date cell — fixed */}
-      <Box
-        sx={{
-          ...cellSx,
-          flex: "0 0 100px",
-          minWidth: 80,
-          maxWidth: 100,
-        }}
-      >
-        <Typography
-          sx={{
-            ...textSx(font.text.md),
-            fontSize: "14px",
-            color: color.type.muted.value,
-          }}
-        >
-          {book.meetingDate}
-        </Typography>
-      </Box>
-
-      {/* Action cell — locked width so the More icon sits at the same x in every
-          row; Approvals uses the standard 12px cell padding, More stays right. */}
-      <Box
-        sx={{
-          ...cellSx,
-          flex: "0 0 220px",
-          minWidth: "220px",
-          maxWidth: "220px",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-        }}
-      >
-        {book.approvals ? (
-          <Box
-            component="button"
-            type="button"
-            onClick={(e) => e.stopPropagation()}
-            sx={{
-              ...textSx(font.text.md, fontWeight.emphasis.value),
-              fontSize: "14px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              p: "4px",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              flexShrink: 0,
-              color: color.type.default.value,
-              "&:hover .approvals-label": { textDecoration: "underline" },
-              "&:focus-visible": { outline: "2px solid #1C4EE4", outlineOffset: "2px", borderRadius: "2px" },
-            }}
-          >
-            <Box component="span" className="approvals-label">Approvals</Box>
-            <Box
-              component="span"
-              sx={{
-                ...textSx(font.text.sm, fontWeight.emphasis.value),
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "16px",
-                height: "16px",
-                minWidth: "16px",
-                maxWidth: "16px",
-                minHeight: "16px",
-                maxHeight: "16px",
-                flexShrink: 0,
-                boxSizing: "border-box",
-                borderRadius: "999px",
-                backgroundColor: "#1C4EE4" /* status/new/default */,
-                color: "#FFFFFF",
-              }}
-            >
-              {book.approvals}
-            </Box>
-          </Box>
-        ) : null}
-        {/* Sparkle Smart Summary action — hidden for now, may return later.
-        <IconButton
-          aria-label="Smart Summary"
-          color="ai"
-          onClick={(e) => e.stopPropagation()}
-          sx={{ p: "4px", borderRadius: "8px", width: 32, height: 32, flexShrink: 0 }}
-        >
-          <AiSparkleIcon size="lg" />
-        </IconButton>
-        */}
-        <IconButton
-          aria-label="More"
-          onClick={(e) => {
-            e.stopPropagation();
-            setMoreAnchor(e.currentTarget);
-          }}
-          sx={{ p: "4px", borderRadius: "8px", width: 32, height: 32, flexShrink: 0, ml: "auto" }}
-        >
-          <MoreIcon size="lg" />
-        </IconButton>
-        <BookMoreMenu
-          anchorEl={moreAnchor}
-          onClose={() => setMoreAnchor(null)}
-          onSmartSummary={onSmartSummary}
-          onSmartPrep={onSmartPrep}
-        />
-      </Box>
-    </Box>
-  );
-}
-
-// ─── BooksGrid ───────────────────────────────────────────────────────────────
-
-function BooksGrid({
-  onOpenBook,
-  onOpenInsight,
-}: {
-  onOpenBook: (id: string) => void;
-  onOpenInsight: (id: string, insight: "summary" | "prep") => void;
-}) {
-  const {
-    tokens: {
-      semantic: { color, radius, font, fontWeight },
-    },
-  } = useTheme();
-  const [showAll, setShowAll] = useState(false);
-  const canCollapse = directorHomeBooks.length > INITIAL_BOOKS_VISIBLE;
-  const visible = showAll
-    ? directorHomeBooks
-    : directorHomeBooks.slice(0, INITIAL_BOOKS_VISIBLE);
-
-  return (
-    <Box
-      sx={{
-        backgroundColor: color.surface.default.value,
-        // Match the inner table's lg radius so overflow:hidden doesn't clip the
-        // bottom corners (md < lg was shaving the bottom-left/right corners).
-        borderRadius: radius.lg.value,
-        overflow: "hidden",
-      }}
-    >
-      <Box
-        sx={{
-          border: `1px solid ${color.ui.divider.default.value}`,
-          borderRadius: `${radius.lg.value} ${radius.lg.value} 0 0`,
-          overflow: "hidden",
-        }}
-      >
-        {visible.map((book, i) => (
-          <BookRow
-            key={book.id}
-            book={book}
-            isLast={i === visible.length - 1}
-            onClick={() => onOpenBook(book.id)}
-            onSmartSummary={() => onOpenInsight(book.id, "summary")}
-            onSmartPrep={() => onOpenInsight(book.id, "prep")}
-          />
-        ))}
-      </Box>
-
-      {/* Show all / Show less toggle */}
-      {canCollapse && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "8px",
-            py: "8px",
-            border: `1px solid ${color.ui.divider.default.value}`,
-            borderTop: "none",
-            borderRadius: "0 0 12px 12px",
-          }}
-        >
-          <Button
-            variant="text"
-            onClick={() => setShowAll((v) => !v)}
-            endIcon={
-              showAll ? <ExpandUpIcon size="md" /> : <ExpandDownIcon size="md" />
-            }
-            sx={{
-              ...textSx(font.text.sm, fontWeight.emphasis.value),
-              minWidth: 0,
-              p: "4px",
-              borderRadius: "8px",
-              color: color.type.default.value,
-              textTransform: "none",
-              "& .MuiButton-endIcon": { ml: "2px" },
-            }}
-          >
-            {showAll ? "Show less" : "Show all"}
-          </Button>
-        </Box>
-      )}
-    </Box>
-  );
-}
-
-// ─── CompetitorUpdatesCard ───────────────────────────────────────────────────
-
-function CompetitorUpdatesCard() {
-  const {
-    tokens: {
-      core: { spacing },
       semantic: { color, font, fontWeight },
     },
   } = useTheme();
-  const [collapsed, setCollapsed] = useState(false);
-
   return (
-    <Box sx={{ position: "relative" }}>
-      {/* Header */}
-      <Box>
-        <Box
-          component="button"
-          type="button"
-          aria-expanded={!collapsed}
-          aria-controls="competitor-updates-body"
-          onClick={() => setCollapsed((v) => !v)}
-          sx={{
-            all: "unset",
-            boxSizing: "border-box",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: spacing["1_5"].value,
-            width: "100%",
-            pl: "4px",
-            pr: "8px",
-            py: "4px",
-            pb: spacing["1"].value,
-            borderRadius: "8px",
-            position: "relative",
-            transition: "background-color 0.15s ease",
-            "&:hover": {
-              backgroundColor: color.action.secondary.hoverFill.value,
-            },
-            "&:focus-visible": {
-              outline: "2px solid #1C4EE4",
-              outlineOffset: "2px",
-            },
-            // AI gradient horizontal stroke at the bottom of the header
-            "&::after": {
-              content: '""',
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: "1px",
-              background:
-                "linear-gradient(90deg, #BE0C1E 0%, #AB48DA 50%, #4069FE 100%)",
-            },
-          }}
-        >
-          <Box
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 32,
-              height: 32,
-              color: color.type.default.value,
-            }}
-          >
-            {collapsed ? <ExpandRightIcon size="lg" /> : <ExpandDownIcon size="lg" />}
-          </Box>
-          <Stack sx={{ flex: 1, gap: 0, textAlign: "left" }}>
+    <Box component="section" sx={{ px: "16px" }}>
+      <Box sx={{ height: "1px", backgroundColor: color.ui.divider.default.value, mb: "24px" }} />
+      <Stack sx={{ gap: "24px" }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ gap: "16px" }}>
+          <Stack direction="row" alignItems="center" sx={{ gap: "8px", minWidth: 0 }}>
             <Typography
+              component="h2"
               sx={{
-                ...textSx(font.text.body, fontWeight.emphasis.value),
+                ...textSx(font.title.h4Md, fontWeight.emphasis.value),
+                // Pinned so a deploy-time Atlas token shift can't resize it.
+                fontSize: "18px",
                 color: color.type.default.value,
               }}
             >
-              Competitor updates
+              {title}
             </Typography>
-            <AiBadge>Curated and summarised by AI</AiBadge>
+            {titleAdornment}
           </Stack>
-        </Box>
-      </Box>
+          {action}
+        </Stack>
+        {children}
+      </Stack>
+    </Box>
+  );
+}
 
-      {/* Body */}
-      <Stack
-        id="competitor-updates-body"
-        hidden={collapsed}
+function SectionLink({ label, onClick }: { label: string; onClick?: () => void }) {
+  const {
+    tokens: {
+      semantic: { color, font, fontWeight },
+    },
+  } = useTheme();
+  return (
+    <Button
+      variant="text"
+      onClick={onClick}
+      endIcon={<ArrowRightIcon size="md" />}
+      sx={{
+        ...textSx(font.label.lg, fontWeight.emphasis.value),
+        flexShrink: 0,
+        color: color.type.default.value,
+        textTransform: "none",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </Button>
+  );
+}
+
+// ─── WaitingForReview ────────────────────────────────────────────────────────
+
+function ReviewTab({
+  label,
+  count,
+  selected,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const {
+    tokens: {
+      semantic: { color, radius, font, fontWeight },
+    },
+  } = useTheme();
+  return (
+    <Box
+      component="button"
+      type="button"
+      role="tab"
+      aria-selected={selected}
+      onClick={onClick}
+      sx={{
+        ...textSx(font.label.lg, fontWeight.emphasis.value),
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "8px",
+        height: "32px",
+        px: "12px",
+        border: "none",
+        borderRadius: radius.md.value,
+        cursor: "pointer",
+        backgroundColor: selected ? color.surface.default.value : "transparent",
+        color: selected ? color.action.link.default.value : color.type.default.value,
+        "&:focus-visible": { outline: "2px solid #1C4EE4", outlineOffset: "2px" },
+      }}
+    >
+      {label}
+      <Box
+        component="span"
         sx={{
-          pt: spacing["2"].value,
-          gap: spacing["2"].value,
-          display: collapsed ? "none" : "flex",
+          ...textSx(font.label.sm, fontWeight.emphasis.value),
+          minWidth: "20px",
+          height: "20px",
+          px: "6px",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: "999px",
+          backgroundColor: selected ? "#1C4EE4" : color.surface.variant.value,
+          color: selected ? "#FFFFFF" : color.type.muted.value,
         }}
       >
-        {competitorUpdates.map((update, i) => (
-          <Stack key={i} sx={{ gap: spacing["1_5"].value }}>
-            <Stack sx={{ gap: spacing["1"].value }}>
-              <Typography
-                sx={{
-                  ...textSx(font.text.md, fontWeight.emphasis.value),
-                  color: color.type.default.value,
-                }}
-              >
+        {count}
+      </Box>
+    </Box>
+  );
+}
+
+function ReviewCard({ item, icon, onClick }: { item: ReviewItem; icon: React.ReactNode; onClick?: () => void }) {
+  const {
+    tokens: {
+      semantic: { color, radius, font, fontWeight },
+    },
+  } = useTheme();
+  return (
+    <Box
+      component="button"
+      type="button"
+      onClick={onClick}
+      sx={{
+        all: "unset",
+        boxSizing: "border-box",
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        gap: "16px",
+        p: "12px",
+        backgroundColor: color.surface.default.value,
+        border: `1px solid ${color.ui.divider.default.value}`,
+        borderRadius: "12px",
+        cursor: onClick ? "pointer" : "default",
+        "&:hover": onClick ? { backgroundColor: color.action.secondary.hoverFill.value } : undefined,
+        "&:focus-visible": { outline: "2px solid #1C4EE4", outlineOffset: "2px" },
+      }}
+    >
+      <Box
+        sx={{
+          width: 40,
+          height: 40,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          backgroundColor: color.surface.variant.value,
+          border: `1px solid ${color.ui.divider.default.value}`,
+          borderRadius: radius.md.value,
+          color: color.type.default.value,
+        }}
+      >
+        {icon}
+      </Box>
+      <Stack sx={{ flex: 1, minWidth: 0, gap: "2px" }}>
+        <Typography
+          noWrap
+          sx={{ ...textSx(font.text.md, fontWeight.emphasis.value), fontSize: "12px", color: color.type.default.value }}
+        >
+          {item.title}
+        </Typography>
+        <Typography sx={{ ...textSx(font.text.md), fontSize: "12px", color: color.type.muted.value }}>
+          Published on: {item.published}
+        </Typography>
+      </Stack>
+      <Box
+        component="span"
+        sx={{
+          ...textSx(font.label.sm, fontWeight.emphasis.value),
+          display: "inline-flex",
+          alignItems: "center",
+          height: "24px",
+          px: "8px",
+          flexShrink: 0,
+          borderRadius: "999px",
+          backgroundColor: color.accent.blue.background.value,
+          color: color.accent.blue.content.value,
+        }}
+      >
+        {item.status}
+      </Box>
+    </Box>
+  );
+}
+
+function WaitingForReview({ onNavigate }: { onNavigate: (to: string) => void }) {
+  const [tab, setTab] = useState<"approvals" | "questionnaires">("approvals");
+  const {
+    tokens: {
+      semantic: { color, radius },
+    },
+  } = useTheme();
+  const items = tab === "approvals" ? approvalItems : questionnaireItems;
+  return (
+    <HomeSection
+      title="Waiting for your review"
+      titleAdornment={
+        <Box component="span" sx={{ display: "inline-flex", color: color.type.default.value }} aria-label="About this list">
+          <InfoIcon size="lg" />
+        </Box>
+      }
+      action={<SectionLink label="Go to Decision Hub" onClick={() => onNavigate("/tasks")} />}
+    >
+      <Stack sx={{ gap: "16px", mt: "-8px" }}>
+        <Box
+          role="tablist"
+          sx={{
+            alignSelf: "flex-start",
+            display: "inline-flex",
+            gap: "8px",
+            p: "2px",
+            borderRadius: radius.md.value,
+            backgroundColor: color.surface.variant.value,
+          }}
+        >
+          <ReviewTab
+            label="Approvals"
+            count={approvalItems.length}
+            selected={tab === "approvals"}
+            onClick={() => setTab("approvals")}
+          />
+          <ReviewTab
+            label="Questionnaires"
+            count={QUESTIONNAIRE_COUNT}
+            selected={tab === "questionnaires"}
+            onClick={() => setTab("questionnaires")}
+          />
+        </Box>
+        <Stack sx={{ gap: "8px" }}>
+          {items.map((item) => (
+            <ReviewCard
+              key={item.id}
+              item={item}
+              icon={tab === "approvals" ? <ClipboardCheckIcon size="lg" /> : <QuestionnairesIcon size="lg" />}
+              onClick={item.href ? () => onNavigate(item.href as string) : undefined}
+            />
+          ))}
+        </Stack>
+      </Stack>
+    </HomeSection>
+  );
+}
+
+// ─── UpcomingMeetings ────────────────────────────────────────────────────────
+
+const TABLE_COLUMNS = "minmax(240px, 1fr) 120px minmax(160px, 217px)";
+
+function UpcomingMeetings({ onOpenBook, onNavigate }: { onOpenBook: (id: string) => void; onNavigate: (to: string) => void }) {
+  const {
+    tokens: {
+      semantic: { color, radius, font, fontWeight },
+    },
+  } = useTheme();
+  const books = directorHomeBooks.slice(0, UPCOMING_BOOKS_VISIBLE);
+  const headerSx = {
+    ...textSx(font.label.lg, fontWeight.emphasis.value),
+    color: color.type.default.value,
+    px: "12px",
+  } as const;
+
+  return (
+    <HomeSection
+      title="Books with upcoming meetings"
+      action={<SectionLink label="Go to Books" onClick={() => onNavigate("/director/books")} />}
+    >
+      <Box sx={{ backgroundColor: color.surface.variant.value, borderRadius: radius.lg.value }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: TABLE_COLUMNS, alignItems: "center", height: "40px" }}>
+          <Box sx={{ ...headerSx, pl: "64px" }}>Title</Box>
+          <Box sx={headerSx}>Meeting date</Box>
+          <Box sx={headerSx}>Committee</Box>
+        </Box>
+        <Box
+          sx={{
+            backgroundColor: color.surface.default.value,
+            border: `1px solid ${color.ui.divider.default.value}`,
+            borderRadius: radius.lg.value,
+            overflow: "hidden",
+          }}
+        >
+          {books.map((book, i) => (
+            <Box
+              key={book.id}
+              sx={{
+                display: "grid",
+                gridTemplateColumns: TABLE_COLUMNS,
+                alignItems: "center",
+                minHeight: "64px",
+                borderBottom: i === books.length - 1 ? "none" : `1px solid ${color.ui.divider.default.value}`,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: "12px", p: "12px", minWidth: 0 }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    p: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: color.surface.variant.value,
+                    border: `1px solid ${color.ui.divider.default.value}`,
+                    borderRadius: radius.md.value,
+                    flexShrink: 0,
+                  }}
+                >
+                  <BookStateIcon status={book.status} />
+                </Box>
+                <Typography
+                  component="button"
+                  type="button"
+                  onClick={() => onOpenBook(book.id)}
+                  sx={{
+                    ...textSx(font.text.md, fontWeight.emphasis.value),
+                    fontSize: "14px",
+                    color: color.type.default.value,
+                    textAlign: "left",
+                    background: "transparent",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    "&:hover": { textDecoration: "underline" },
+                    "&:focus-visible": { outline: "2px solid #1C4EE4", outlineOffset: "2px", borderRadius: "2px" },
+                  }}
+                >
+                  {book.title}
+                </Typography>
+              </Box>
+              <Typography sx={{ ...textSx(font.text.md), fontSize: "14px", color: color.type.muted.value, px: "12px" }}>
+                {book.meetingDate}
+              </Typography>
+              <Stack direction="row" alignItems="center" sx={{ px: "12px", gap: "8px", minWidth: 0 }}>
+                <Typography noWrap sx={{ ...textSx(font.text.md), fontSize: "14px", color: color.type.muted.value }}>
+                  {book.committees[0]}
+                </Typography>
+                {book.extraCommittees > 0 && (
+                  <Typography sx={{ ...textSx(font.text.md), fontSize: "14px", color: color.type.muted.value, flexShrink: 0 }}>
+                    +{book.extraCommittees}
+                  </Typography>
+                )}
+              </Stack>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+    </HomeSection>
+  );
+}
+
+// ─── CompetitorUpdates ───────────────────────────────────────────────────────
+
+function CompetitorUpdates({ onReadMore }: { onReadMore: () => void }) {
+  const {
+    tokens: {
+      semantic: { color, font, fontWeight },
+    },
+  } = useTheme();
+  return (
+    <HomeSection
+      title="Competitor updates"
+      titleAdornment={<AiBadge>Curated and summarized by AI</AiBadge>}
+      action={<SectionLink label="Read more updates" onClick={onReadMore} />}
+    >
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
+        {exploreCompetitorUpdates.slice(0, 3).map((update) => (
+          <Stack
+            key={update.title}
+            sx={{
+              gap: "12px",
+              p: "16px",
+              backgroundColor: color.surface.default.value,
+              border: `1px solid ${color.ui.divider.default.value}`,
+              borderRadius: "12px",
+            }}
+          >
+            <Stack sx={{ gap: "4px" }}>
+              <Typography sx={{ ...textSx(font.text.body, fontWeight.emphasis.value), color: color.type.default.value }}>
                 {update.title}
               </Typography>
-              <Stack
-                direction="row"
-                justifyContent="space-between"
-                alignItems="center"
-                flexWrap="wrap"
-                sx={{ rowGap: "4px" }}
-              >
-                <Typography
-                  sx={{
-                    ...textSx(font.text.sm),
-                    color: color.type.muted.value,
-                    pr: "4px",
-                  }}
-                >
-                  {update.source}
-                </Typography>
-                <Typography
-                  sx={{
-                    ...textSx(font.text.sm),
-                    color: color.type.muted.value,
-                    textAlign: "right",
-                  }}
-                >
-                  {update.date}
-                </Typography>
-              </Stack>
+              <Typography sx={{ ...textSx(font.text.sm), color: color.type.muted.value }}>
+                {update.source} • {update.date}
+              </Typography>
             </Stack>
             <Typography
               sx={{
-                ...textSx(font.text.sm),
+                ...textSx(font.text.body),
                 color: color.type.muted.value,
+                display: "-webkit-box",
+                WebkitLineClamp: 5,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
               }}
             >
               {update.description}
             </Typography>
           </Stack>
         ))}
-
-        <Box sx={{ display: "flex", justifyContent: "center" }}>
-          <Button
-            variant="text"
-            sx={{
-              ...textSx(font.text.body, fontWeight.emphasis.value),
-              color: color.type.default.value,
-              textTransform: "none",
-            }}
-          >
-            Read more updates
-          </Button>
-        </Box>
-
-        <AiInaccuracyDisclaimer />
-      </Stack>
-    </Box>
+      </Box>
+    </HomeSection>
   );
 }
 
@@ -807,7 +767,9 @@ function CustomizeYourFeedFilter({
 // ─── DirectorHomePage ────────────────────────────────────────────────────────
 
 export default function DirectorHomePage() {
-  const [tabValue, setTabValue] = useState(0);
+  // "home" is the Figma home layout; "explore" is the full competitor feed
+  // reached through "Read more updates".
+  const [view, setView] = useState<"home" | "explore">("home");
   // "All" or one of the company names from feedFilters. Lifted from the filter
   // chips so the Explore card list can react to the selection.
   const [feedFilter, setFeedFilter] = useState<string>("All");
@@ -820,195 +782,64 @@ export default function DirectorHomePage() {
       core: { spacing },
       semantic: { color },
     },
-    presets: { TabsPresets },
   } = useTheme();
-  const aiGradient = `linear-gradient(90deg, ${color.ai.default.gradientStart.value} 0%, ${color.ai.default.gradientMiddle.value} 50%, ${color.ai.default.gradientEnd.value} 100%)`;
   const navigate = useNavigate();
   const {
     panelOpen,
     overlayOpen,
-    openPanel,
     closePanel,
     closeOverlay,
     expandToOverlay,
     collapseToPanel,
-    setActiveTab,
-    setSelectedInsight,
+    demoMode,
   } = useSmartAssist();
 
-  // Smart Summary / Smart Prep from a book's more-menu: open the book reader
-  // with the docked panel showing that insight.
-  const openInsightInBook = (id: string, insight: "summary" | "prep") => {
-    setActiveTab(1);
-    setSelectedInsight(insight);
-    openPanel();
-    navigate(`/director/books/${id}`, { state: { from: "/director" } });
-  };
+  // AGAI integration use cases demo (the director view): stay on the home page. The hero composer drops in the first scripted prompt on click,
+  // and sending it opens the full-screen Ask GovernAI view (overlay is the
+  // preferred mode, set by expanding then closing it).
+  useEffect(() => {
+    if (!demoMode) return;
+    expandToOverlay();
+    closeOverlay();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demoMode]);
+
+  const openBook = (id: string) => navigate(`/director/books/${id}`, { state: { from: "/director" } });
 
   return (
     <Box sx={{ display: "flex", height: "100%", overflow: "hidden" }}>
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        minWidth: 0,
-        height: "100%",
-        // overflowX hidden so the hero's counter-translate (briefly shifted
-        // toward the panel to stay horizontally fixed) can't spawn a transient
-        // horizontal scrollbar mid-animation.
-        overflowX: "hidden",
-        overflowY: "auto",
-        background:
-          "radial-gradient(125.08% 101.36% at 0% 0%, var(--lens-semantic-color-background-base-gradient-start, #f9f9fc) 30.53%, var(--lens-semantic-color-background-base-gradient-end, #fcfcff) 100%)",
-      }}
-    >
-    <MaxWidthBody sx={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
-      {/* Hidden SVG defs — provides the AI gradient referenced by the Explore icon. */}
-      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
-        <defs>
-          <linearGradient
-            id="director-tabs-ai-gradient"
-            x1="0%"
-            y1="0%"
-            x2="100%"
-            y2="100%"
-          >
-            <stop offset="0%" stopColor="#BE0C1E" />
-            <stop offset="50%" stopColor="#AB48DA" />
-            <stop offset="100%" stopColor="#4069FE" />
-          </linearGradient>
-        </defs>
-      </svg>
-
-      <Tabs
-        value={tabValue}
-        onChange={(_, v) => setTabValue(v)}
-        {...TabsPresets.Tabs.alignToPageHeader}
+      <Box
         sx={{
-          mt: "24px" /* spacing/3 */,
-          // Edge-to-edge bottom divider: Tabs spans 100% of its container and
-          // tabs are inset by content/margin (32px) via internal padding so the
-          // border runs to the edges on both sides.
-          width: "100%",
-          pl: "32px" /* content/margin */,
-          pr: panelOpen ? "12px" : "32px" /* content/margin */,
-          transition: "padding-right 0.3s ease",
-          minHeight: "40px",
-          // Atlas paints the Tabs divider on `::after` at `z-index: -1`. Tabs
-          // itself doesn't form a stacking context, so that pseudo escapes to
-          // the nearest stacking-context ancestor and gets painted behind the
-          // parent Box's radial-gradient background — making the divider
-          // invisible. `isolation: isolate` forces Tabs to be its own stacking
-          // context, containing the negative-z pseudo so it stays visible.
-          isolation: "isolate",
-          // No gap between tab buttons so the divider underneath is unbroken.
-          "& .MuiTabs-flexContainer": {
-            gap: 0,
-          },
-          // The Atlas Tabs theme paints the divider via Tabs root `::after`
-          // (`zIndex: -1`, behind everything) and gives each Tab its own
-          // `::after` (gray for unselected, colored for selected). Suppress
-          // the per-tab gray underline so we get one unbroken divider across
-          // the full Tabs width (the Tabs root `::after` shows through), and
-          // let the selected tab's colored 2px underline paint above it.
-          // Keep the divider at Atlas's default `zIndex: -1` — the Tab has
-          // `zIndex: 3` and forms a stacking context, so its `::after` (the
-          // 2px selected underline) paints above the divider. Bumping the
-          // Tabs `::after` forward covers the bottom 1px of the 2px
-          // underline, clipping it to half-height.
-          // Inset the divider by the 32px horizontal padding so it spans the
-          // inner content width (matching the tab row), not the outer box.
-          "&::after": {
-            left: "32px",
-            right: "32px",
-          },
-          "& .MuiTab-root::after": {
-            display: "none",
-          },
-          "& .MuiTab-root.Mui-selected::after": {
-            display: "block",
-            height: "2px",
-            bottom: 0,
-            top: "auto",
-            borderTopLeftRadius: "2px",
-            borderTopRightRadius: "2px",
-            borderBottomLeftRadius: 0,
-            borderBottomRightRadius: 0,
-          },
-          // Explore tab is the AI tab — its selected underline uses the Atlas
-          // AI horizontal gradient instead of the standard selection color.
-          "& #tab-explore.Mui-selected::after": {
-            background: aiGradient,
-            backgroundColor: "transparent",
-          },
-          "& .MuiTab-root": {
-            minHeight: "40px",
-            height: "40px",
-            px: "20px",
-            pt: "8px",
-            pb: "8px",
-          },
-          // AI gradient fill for the Explore tab icon.
-          "& #tab-explore svg path": {
-            fill: "url(#director-tabs-ai-gradient)",
-          },
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minWidth: 0,
+          height: "100%",
+          // overflowX hidden so the hero's counter-translate can't spawn a
+          // transient horizontal scrollbar mid-animation.
+          overflowX: "hidden",
+          overflowY: "auto",
+          background:
+            "radial-gradient(125.08% 101.36% at 0% 0%, var(--lens-semantic-color-background-base-gradient-start, #f9f9fc) 30.53%, var(--lens-semantic-color-background-base-gradient-end, #fcfcff) 100%)",
         }}
       >
-        <Tab
-          icon={<DashboardIcon />}
-          iconPosition="start"
-          label="Overview"
-          id="tab-overview"
-          aria-controls="tabpanel-overview"
-        />
-        <Tab
-          icon={<ChartMapIcon />}
-          iconPosition="start"
-          label="Explore"
-          id="tab-explore"
-          aria-controls="tabpanel-explore"
-        />
-      </Tabs>
-
-      <div
-        role="tabpanel"
-        hidden={tabValue !== 0}
-        id="tabpanel-overview"
-        aria-labelledby="tab-overview"
-      >
-        {tabValue === 0 && (
-          <Box
-            sx={{
-              display: "flex",
-              gap: spacing["3"].value /* content/gutter = 24 */,
-              pl: spacing["4"].value /* content/margin = 32 */,
-              pr: panelOpen ? "12px" : spacing["4"].value /* content/margin = 32 */,
-              pt: "24px" /* chat box sits 24px below the tabs */,
-              pb: spacing["4"].value,
-              alignItems: "flex-start",
-              transition: "padding-right 0.3s ease",
-            }}
-          >
-            {/* Left column — fluid. Holds the Smart Assist composer hero and the
-                Books section; the Competitor rail sits beside the whole column. */}
-            <Stack
+        <MaxWidthBody sx={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
+          {view === "home" ? (
+            <Box
               sx={{
-                flex: 1,
-                minWidth: 0,
-                gap: spacing["2"].value,
+                pl: spacing["4"].value /* content/margin = 32 */,
+                pr: panelOpen ? "12px" : spacing["4"].value,
+                pt: spacing["3"].value /* app-header-to-main = 24 */,
+                pb: spacing["4"].value,
+                transition: "padding-right 0.3s ease",
               }}
             >
-              {/* Home search hero — Smart Assist composer (Overview only). Scrolls
-                  with the page (not sticky). Everything animates on one shared
-                  300ms timeline so the hero, the panel slide and the content
-                  reflow read as a single cohesive motion. The wrapper fades the
-                  hero as the panel docks; the inner Collapse provides the slide.
-                  +8px bottom margin puts it 24px above the Books header against
-                  the 16px Stack gap. */}
+              {/* Hero — Smart Assist composer on the blue AI gradient. Hidden while
+                  the Ask GovernAI panel is docked (no chat box, no blue
+                  background). One shared 300ms timeline so the hero, panel slide
+                  and content reflow read as a single motion. */}
               <Box
                 sx={{
-                  mb: "8px",
                   transition: `transform ${HERO_ANIM_MS}ms ${HERO_EASE}, opacity ${HERO_ANIM_MS}ms ${HERO_EASE}`,
                   willChange: "transform, opacity",
                 }}
@@ -1018,84 +849,75 @@ export default function DirectorHomePage() {
                 }}
               >
                 <Collapse in={!panelOpen} timeout={HERO_ANIM_MS} easing={HERO_EASE}>
-                  <DirectorHomeSearch />
+                  <Box
+                    sx={{
+                      px: spacing["3"].value,
+                      py: spacing["5"].value /* 40 */,
+                      borderRadius: "24px",
+                      backgroundImage:
+                        "linear-gradient(180deg, rgba(184, 196, 255, 0.4) 0%, rgba(251, 251, 254, 0) 81.755%), linear-gradient(90deg, #F9F9FC 0%, #F9F9FC 100%)",
+                    }}
+                  >
+                    <DirectorHomeSearch />
+                  </Box>
                 </Collapse>
               </Box>
 
-              <SectionHeader
-                title="Books"
-                subtitle="Board materials, ordered by meeting date."
-                headingLevel="h4"
-                slotProps={{ title: { sx: { fontWeight: 600, fontSize: "18px" } } }}
-              />
-              <BooksGrid
-                onOpenBook={(id) => navigate(`/director/books/${id}`, { state: { from: "/director" } })}
-                onOpenInsight={openInsightInBook}
-              />
-            </Stack>
-
-            {/* Right column — adaptive: 343–380px, ~28% of body width.
-                Hidden while the Smart Assist panel is docked, so the panel
-                takes the inline space without crowding the page. */}
-            {!panelOpen && (
-              <Box sx={{ width: "clamp(343px, 28%, 380px)", flexShrink: 0 }}>
-                <CompetitorUpdatesCard />
-              </Box>
-            )}
-          </Box>
-        )}
-      </div>
-
-      <div
-        role="tabpanel"
-        hidden={tabValue !== 1}
-        id="tabpanel-explore"
-        aria-labelledby="tab-explore"
-      >
-        {tabValue === 1 && (
-          <Box
-            sx={{
-              display: "flex",
-              gap: spacing["3"].value /* content/gutter = 24 */,
-              pl: spacing["4"].value /* content/margin = 32 */,
-              pr: panelOpen ? "12px" : spacing["4"].value /* content/margin = 32 */,
-              pt: spacing["2"].value /* page-header-to-content = 16 */,
-              pb: spacing["4"].value,
-              alignItems: "flex-start",
-              transition: "padding-right 0.3s ease",
-            }}
-          >
-            {/* Left column — fluid */}
-            <Stack
+              <Stack sx={{ gap: spacing["6"].value /* 48 */, pt: panelOpen ? 0 : spacing["3"].value, px: spacing["3"].value /* 24 + section 16 = Figma inset */ }}>
+                <WaitingForReview onNavigate={(to) => navigate(to)} />
+                <UpcomingMeetings onOpenBook={openBook} onNavigate={(to) => navigate(to)} />
+                <CompetitorUpdates onReadMore={() => setView("explore")} />
+              </Stack>
+            </Box>
+          ) : (
+            <Box
               sx={{
-                flex: 1,
-                minWidth: 0,
-                gap: spacing["2"].value /* 16px */,
-                pt: spacing["1_5"].value /* 12px */,
+                display: "flex",
+                gap: spacing["3"].value /* content/gutter = 24 */,
+                pl: spacing["4"].value,
+                pr: panelOpen ? "12px" : spacing["4"].value,
+                pt: spacing["3"].value,
+                pb: spacing["4"].value,
+                alignItems: "flex-start",
+                transition: "padding-right 0.3s ease",
               }}
             >
-              <SectionHeader
-                title="Competitor updates"
-                subtitle={<AiBadge>Curated and summarized by AI.</AiBadge>}
-                headingLevel="h3"
-                slotProps={{ title: { sx: { fontWeight: 600 } } }}
-              />
-              <Stack sx={{ gap: "8px", pl: "1px" }}>
-                {visibleExploreUpdates.map((update, i) => (
-                  <ExploreCompetitorCard key={i} update={update} />
-                ))}
+              {/* Left column — fluid */}
+              <Stack sx={{ flex: 1, minWidth: 0, gap: spacing["2"].value }}>
+                <Box>
+                  <Button
+                    variant="text"
+                    onClick={() => setView("home")}
+                    startIcon={<ArrowLeftIcon size="md" />}
+                    sx={{ textTransform: "none", color: color.type.default.value }}
+                  >
+                    Home
+                  </Button>
+                </Box>
+                <Stack sx={{ gap: "4px", px: "12px" }}>
+                  <Typography
+                    component="h2"
+                    sx={{ fontSize: "18px", fontWeight: 600, lineHeight: "28px", color: color.type.default.value }}
+                  >
+                    Competitor updates
+                  </Typography>
+                  <AiBadge>Curated and summarized by AI.</AiBadge>
+                </Stack>
+                <Stack sx={{ gap: "8px", pl: "1px" }}>
+                  {visibleExploreUpdates.map((update, i) => (
+                    <ExploreCompetitorCard key={i} update={update} />
+                  ))}
+                </Stack>
               </Stack>
-            </Stack>
 
-            {/* Right column — adaptive: 343–380px, ~28% of body width. */}
-            <Box sx={{ width: "clamp(343px, 28%, 380px)", flexShrink: 0 }}>
-              <CustomizeYourFeedFilter selected={feedFilter} onSelect={setFeedFilter} />
+              {/* Right column — adaptive: 343–380px, ~28% of body width. */}
+              <Box sx={{ width: "clamp(343px, 28%, 380px)", flexShrink: 0 }}>
+                <CustomizeYourFeedFilter selected={feedFilter} onSelect={setFeedFilter} />
+              </Box>
             </Box>
-          </Box>
-        )}
-      </div>
-    </MaxWidthBody>
-    </Box>
+          )}
+        </MaxWidthBody>
+      </Box>
 
       {/* ── Smart Assist sidenav (panel mode) ── */}
       <SmartAssistSidenav

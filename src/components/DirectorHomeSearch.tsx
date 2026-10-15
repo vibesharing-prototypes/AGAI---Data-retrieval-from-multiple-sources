@@ -1,11 +1,18 @@
-import { useRef, useState } from "react";
-import { Box, Button, InputBase, Stack, Typography, useTheme } from "@mui/material";
+import { useCallback, useRef, useState } from "react";
+import { Box, Button, IconButton, Stack, Tooltip, Typography, useTheme } from "@mui/material";
 
-import ArrowUpIcon from "@diligentcorp/atlas-react-bundle/icons/ArrowUp";
+import { AIChatBox } from "@diligentcorp/atlas-react-bundle";
+import CaretDownIcon from "@diligentcorp/atlas-react-bundle/icons/CaretDown";
 
-import SourcesFilterButton from "./SourcesFilterButton.js";
 import SuggestionChips from "./SuggestionChips.js";
+import {
+  ChatMicrophoneIcon,
+  ExtendedThinkingIcon,
+  ToolsSliderIcon,
+  UploadFileIcon,
+} from "./SmartAssistOverlay.js";
 import { useSmartAssist } from "../context/SmartAssistContext.js";
+import { DEMO_STEPS } from "../data/demo-agai-integration-usecases.js";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 // Centered home hero: the Smart Assist composer lifted out of the right rail
@@ -19,24 +26,13 @@ export default function DirectorHomeSearch() {
       component: { aiChatBox },
     },
   } = useTheme();
-  // The AI gradient border is reconstructed from the exact same theme tokens the
-  // Atlas <AIChatBox> uses in the full-screen Smart Assist view, so the treatment
-  // is identical. We rebuild it here (rather than render an <AIChatBox>) because
-  // that component is driven by the shared AIChatContext, and this home composer
-  // must keep its own independent draft.
-  const innerRadius = `calc(${aiChatBox.container.borderRadius.value} - ${aiChatBox.container.padding.value})`;
+  const { handleSend, openSmartAssist, demoMode, demoStepsDone, prompt, setPrompt } = useSmartAssist();
 
-  const { handleSend, openSmartAssist, sources, handleToggleSource } = useSmartAssist();
-
-  // The home hero composer is its OWN entry point, independent from the Smart
-  // Assist panel/overlay. It keeps a local draft so selecting a prompt template
-  // in the panel (which writes the shared composer state) never leaks into this
-  // widget, and vice versa.
-  const [prompt, setPrompt] = useState("");
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   // The composer wrapper element, used to anchor the suggestion dropdown above
   // it. Stored in state (callback ref) so the dropdown re-renders once mounted.
   const [composerAnchor, setComposerAnchor] = useState<HTMLDivElement | null>(null);
+  const [extendedThinking, setExtendedThinking] = useState(false);
 
   // Drop a starter prompt in and focus the composer so the cursor blinks and
   // the user can immediately edit the pasted template.
@@ -62,15 +58,45 @@ export default function DirectorHomeSearch() {
     });
   };
 
-  const canSubmit = prompt.trim().length > 0;
+  // Always a fresh entry point — start a new session regardless of what was
+  // open before.
+  const submit = useCallback(
+    (text: string) => {
+      if (!text.trim()) return;
+      // Open first: openSmartAssist() may consume a pending fresh-open reset
+      // (after navigating here), which clears messages. Sending afterwards keeps
+      // the new user message instead of having it wiped.
+      openSmartAssist();
+      handleSend(text, { newSession: true });
+      setPrompt("");
+    },
+    [handleSend, setPrompt, openSmartAssist],
+  );
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
 
-  const submit = () => {
-    if (!canSubmit) return;
-    // Always a fresh entry point — start a new session regardless of what was
-    // open before.
-    handleSend(prompt, { newSession: true });
-    setPrompt("");
-    openSmartAssist();
+  // Atlas AIChatBox only submits on Enter while single-line, so capture Enter
+  // ourselves (Shift+Enter still adds a line break) — same as the full-screen view.
+  const registerInput = useCallback((node: HTMLTextAreaElement | null) => {
+    inputRef.current = node;
+    if (!node) return;
+    node.addEventListener(
+      "keydown",
+      (e) => {
+        if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (node.value.trim()) submitRef.current(node.value);
+      },
+      true,
+    );
+  }, []);
+
+  // AGAI integration use cases demo: clicking into an empty composer drops in the next scripted
+  // prompt, so the presenter can start the story from the home page.
+  const prefillDemoPrompt = () => {
+    const next = DEMO_STEPS[demoStepsDone];
+    if (demoMode && next && !prompt.trim()) fillAndFocus(next.prompt);
   };
 
   return (
@@ -84,21 +110,21 @@ export default function DirectorHomeSearch() {
       }}
     >
       {/* Base gap is 12px (the spacing the chips sit below the composer). The
-          heading→composer and chips→Open-Smart-Assist gaps are bumped back to
-          16px with a compensating +4px top margin on those two items. */}
-      <Stack sx={{ width: "100%", maxWidth: "800px", gap: "12px" }}>
+          subtitle→composer gap is 32px (+20px top margin) and chips→Open-Smart-
+          Assist is bumped back to 16px with a compensating +4px top margin. */}
+      <Stack sx={{ width: "100%", maxWidth: "708px", gap: "12px" }}>
         {/* Heading + subtitle */}
         <Stack sx={{ gap: "4px", textAlign: "center" }}>
           <Typography
             component="h2"
             sx={{
-              // Atlas H4 (title.h4Md = 18px / 28px), weight 600. fontSize pinned
-              // to 18px so a deploy-time token shift can't resize it.
-              fontFamily: font.title.h4Md.fontFamily.value,
-              fontSize: "18px",
+              // Atlas h2-display (28px / 34px), weight 600. fontSize pinned so a
+              // deploy-time token shift can't resize it.
+              fontFamily: font.title.h2Display.fontFamily.value,
+              fontSize: "28px",
               fontWeight: fontWeight.emphasis.value,
-              lineHeight: font.title.h4Md.lineHeight.value,
-              letterSpacing: font.title.h4Md.letterSpacing.value,
+              lineHeight: font.title.h2Display.lineHeight.value,
+              letterSpacing: font.title.h2Display.letterSpacing.value,
               color: color.type.default.value,
             }}
           >
@@ -118,161 +144,96 @@ export default function DirectorHomeSearch() {
           </Typography>
         </Stack>
 
-        {/* Composer — reconstructs the Atlas AIChatBox container from the
-            full-screen view: a 1px border-color frame whose top half carries
-            the AI gradient border. The border animates down to the bottom on
-            focus/hover, exactly like the full-screen composer. */}
+        {/* Composer — same treatment as the full-screen Ask GovernAI composer:
+            indigo blur glow behind, a 1px #DEE0E9 frame with the Atlas low
+            elevation shadow, and the Atlas gradient-border/glow turned off. */}
         <Box
           ref={setComposerAnchor}
+          onFocus={prefillDemoPrompt}
+          onClick={prefillDemoPrompt}
           sx={{
             position: "relative",
             width: "100%",
-            // +4px so heading→composer stays 16px against the 12px Stack gap.
-            mt: "4px",
-            // Container caps at 88px tall — the input area scrolls inside.
-            maxHeight: "88px",
-            display: "flex",
-            flexDirection: "column",
-            p: aiChatBox.container.padding.value,
-            borderRadius: aiChatBox.container.borderRadius.value,
-            backgroundColor: aiChatBox.container.default.borderColor.value,
-            transition: "background-color 0.3s ease-in-out",
-            "&:hover": {
-              backgroundColor: aiChatBox.container.hover.borderColor.value,
-            },
-            "&:has(textarea:focus)": {
-              backgroundColor: aiChatBox.container.active.borderColor.value,
-              outlineColor: color.ui.focusRing.value,
-              outlineWidth: borderWidth.focusWidth.value,
-              outlineOffset: borderWidth.focusOffset.value,
-              outlineStyle: "solid",
-            },
-            // On focus/hover the gradient border slides to the bottom.
-            "&:focus-within, &:hover": {
-              "& .home-ai-gradient-border": { top: "50%", bottom: 0 },
-            },
+            // +20px so subtitle→composer is 32px against the 12px Stack gap.
+            mt: "20px",
           }}
         >
-          {/* AI gradient border — fills the top half; the opaque content
-              wrapper clips it to a 1px frame along the top + upper sides. */}
           <Box
             role="presentation"
-            className="home-ai-gradient-border"
             sx={{
-              pointerEvents: "none",
+              width: "660px",
+              maxWidth: "100%",
+              height: "140px",
               position: "absolute",
-              width: "100%",
-              top: 0,
-              bottom: "50%",
-              borderRadius: innerRadius,
-              transition: "top 0.3s ease-in-out, bottom 0.3s ease-in-out",
-              willChange: "top, bottom",
-              background: `linear-gradient(to left, transparent 0%, ${aiChatBox.borderGradient.stop1.value} 35%, ${aiChatBox.borderGradient.stop2.value} 50%, ${aiChatBox.borderGradient.stop3.value} 65%, transparent 100%)`,
+              left: "50%",
+              top: "-14px",
+              transform: "translateX(-50%)",
+              opacity: 0.48,
+              background:
+                "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(64,105,254,0.5) 23%, rgba(0,64,213,0.5) 49%, rgba(64,105,254,0.5) 73%, rgba(255,255,255,0.5) 100%)",
+              borderRadius: "9999px",
+              filter: "blur(77px)",
+              pointerEvents: "none",
+              zIndex: 0,
             }}
           />
-          {/* Content wrapper — opaque, clips the gradient border to the frame.
-              Fills the 88px-capped container; the input region below takes the
-              remaining height and scrolls, keeping the toolbar always visible. */}
           <Box
             sx={{
-              width: "100%",
-              flex: 1,
-              minHeight: 0,
               position: "relative",
-              backgroundColor: aiChatBox.container.backgroundColor.value,
-              borderRadius: innerRadius,
+              zIndex: 1,
+              borderRadius: "12px",
               overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
+              border: "1px solid #DEE0E9",
+              boxShadow:
+                "-1px 4px 8px rgba(135,135,135,0.08), -2px 9px 12px rgba(135,135,135,0.06), -12px 38px 24px rgba(135,135,135,0.02), -12px 40px 20px rgba(135,135,135,0.01)",
             }}
           >
-          <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-          <InputBase
-            multiline
-            fullWidth
-            minRows={1}
-            maxRows={6}
-            inputRef={inputRef}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && canSubmit) {
-                e.preventDefault();
-                submit();
+            <AIChatBox
+              onSubmit={submit}
+              onStop={() => {}}
+              isUploadAvailable={false}
+              leadingActions={
+                <>
+                  <Tooltip title="Attach file">
+                    <IconButton size="small" sx={{ width: 32, height: 32, p: "4px", borderRadius: "12px", color: "#232429" }}>
+                      <UploadFileIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Box sx={{ display: "inline-flex", alignSelf: "center" }}>
+                    <Button
+                      variant="text"
+                      size="small"
+                      startIcon={<ToolsSliderIcon />}
+                      endIcon={<CaretDownIcon size="md" />}
+                      sx={{ borderRadius: "12px", px: "8px", py: "4px", fontWeight: 500, fontSize: "14px", lineHeight: "20px", minWidth: 0, color: "#232429", textTransform: "none" }}
+                    >
+                      Tools
+                    </Button>
+                  </Box>
+                </>
               }
-            }}
-            placeholder="Ask me anything about your board materials"
-            sx={{
-              fontFamily: font.text.body.fontFamily.value,
-              letterSpacing: font.text.body.letterSpacing.value,
-              color: color.type.default.value,
-              alignItems: "flex-start",
-              "& .MuiInputBase-input": {
-                // 10px top (not 12) so a single line fits within the 88px cap
-                // once the 56px toolbar is accounted for, without clipping.
-                padding: "10px 12px 0 12px",
-                fontSize: "14px !important",
-                lineHeight: "20px !important",
-              },
-              "& .MuiInputBase-input::placeholder": {
-                color: color.type.muted.value,
-                opacity: 1,
-              },
-            }}
-          />
-          </Box>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "8px",
-              p: "12px",
-              flexShrink: 0,
-            }}
-          >
-            <SourcesFilterButton
-              sources={sources}
-              onToggle={handleToggleSource}
-              allLabel="All sources"
-            />
-            <Box
-              component="button"
-              type="button"
-              aria-label="Start chat"
-              onClick={submit}
-              disabled={!canSubmit}
+              trailingActions={
+                <>
+                  <Tooltip title="Voice input" placement="top">
+                    <IconButton size="small" sx={{ width: 32, height: 32, p: "4px", borderRadius: "8px", color: "#232429" }}>
+                      <ChatMicrophoneIcon />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              }
               sx={{
-                all: "unset",
-                boxSizing: "border-box",
-                // Always pin the submit button to the right, even when no source
-                // selector is rendered (MVP outside a book).
-                ml: "auto",
-                cursor: canSubmit ? "pointer" : "not-allowed",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                height: "32px",
-                width: "32px",
-                flexShrink: 0,
-                borderRadius: "12px",
-                border: `1px solid ${color.action.secondary.outline.value}`,
-                backgroundColor: "transparent",
-                color: color.action.secondary.onSecondary.value,
-                opacity: canSubmit ? 1 : 0.4,
-                transition: "background-color 0.15s ease",
-                "&:hover": canSubmit
-                  ? { backgroundColor: color.selection.secondary.default.value }
-                  : undefined,
-                "&:focus-visible": {
-                  outline: "2px solid #1C4EE4",
-                  outlineOffset: "2px",
-                },
+                "& .MuiInputBase-input": { padding: "16px 24px 12px", fontSize: "14px !important" },
+                "& .AtlasAIGlow-root": { display: "none !important" },
+                "& .AtlasAIChatBox-gradient-border": { display: "none !important" },
               }}
-            >
-              <ArrowUpIcon size="md" />
-            </Box>
-          </Box>
+              slotProps={{
+                textField: {
+                  placeholder: "Ask anything about your board materials",
+                  slotProps: { textField: { inputRef: registerInput } },
+                },
+                disclaimer: { stackProps: { style: { display: "none" } } },
+              }}
+            />
           </Box>
         </Box>
 
@@ -287,19 +248,13 @@ export default function DirectorHomeSearch() {
           promptSet="default"
           anchorEl={composerAnchor}
           placement="bottom"
-          showIcon={false}
+          showIcon
           onSelectPrompt={fillAndFocus}
           onChipOpen={focusComposer}
+          sx={{ mt: "4px" }}
         />
 
-        {/* Open Smart Assist — small tertiary Atlas button (text variant), no
-            icon. The +4px top margin keeps a 16px gap above it against the 12px
-            Stack gap. */}
-        <Box sx={{ display: "flex", justifyContent: "center", mt: "4px" }}>
-          <Button variant="text" size="small" onClick={openSmartAssist}>
-            Ask GovernAI
-          </Button>
-        </Box>
+
       </Stack>
     </Box>
   );

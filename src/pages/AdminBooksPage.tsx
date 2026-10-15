@@ -10,7 +10,6 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import AiSparkleIcon from "@diligentcorp/atlas-react-bundle/icons/AiSparkle";
 import AddIcon from "@diligentcorp/atlas-react-bundle/icons/Add";
 import FilterIcon from "@diligentcorp/atlas-react-bundle/icons/Filter";
 import ColumnsIcon from "@diligentcorp/atlas-react-bundle/icons/Columns";
@@ -292,7 +291,7 @@ export default function AdminBooksPage() {
   const { tokens: { semantic: { color, radius } } } = useTheme();
   const [searchValue, setSearchValue] = useState("");
   const [visibleCount, setVisibleCount] = useState(5);
-  const { panelOpen, overlayOpen, openSmartAssist, closePanel, closeOverlay, expandToOverlay, collapseToPanel } = useSmartAssist();
+  const { panelOpen, overlayOpen, closePanel, closeOverlay, expandToOverlay, collapseToPanel } = useSmartAssist();
 
   const showCommittee = !panelOpen;
   const showLastUpdated = !panelOpen;
@@ -352,35 +351,6 @@ export default function AdminBooksPage() {
           <Button variant="contained" startIcon={<AddIcon size="lg" />} sx={{ fontWeight: 600, fontSize: "16px" }}>
             Create book
           </Button>
-          {!panelOpen && !overlayOpen && (
-            <Button
-              variant="outlined"
-              color="ai"
-              startIcon={<AiSparkleIcon size="lg" />}
-              onClick={openSmartAssist}
-              sx={{
-                fontSize: "16px",
-                border: "1px solid transparent !important",
-                backgroundColor: "transparent !important",
-                backgroundImage:
-                  "linear-gradient(#fff, #fff), linear-gradient(128deg, #b11f62 17.49%, #1c4ee4 100%) !important",
-                backgroundOrigin: "border-box !important",
-                backgroundClip: "padding-box, border-box !important",
-                "&::before": { display: "none" },
-                "&:hover, &:not(.Mui-disabled):hover": {
-                  border: "1px solid transparent !important",
-                  backgroundColor: "transparent !important",
-                  backgroundImage:
-                    "linear-gradient(#f3f3f3, #f3f3f3), linear-gradient(128deg, #b11f62 17.49%, #1c4ee4 100%) !important",
-                  backgroundOrigin: "border-box !important",
-                  backgroundClip: "padding-box, border-box !important",
-                },
-                "&:hover::before, &::after, &:hover::after": { display: "none" },
-              }}
-            >
-              Ask GovernAI
-            </Button>
-          )}
         </Stack>
 
         {/* Toolbar */}

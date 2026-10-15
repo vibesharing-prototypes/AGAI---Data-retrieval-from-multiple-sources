@@ -22,65 +22,16 @@ import {
   ONBOARDING_RICH_BLOCKS,
   matchTriggerResponse,
 } from "../data/hybrid-search.constants.js";
+import {
+  isDemoPath,
+  DEMO_STEPS,
+  DEMO_THINKING_LABEL_MS,
+  matchDemoStep,
+} from "../data/demo-agai-integration-usecases.js";
 
 export type SmartAssistAudience = "admin" | "director";
 
-// ─── Typing-placeholder hook ──────────────────────────────────────────────────
-
-const COMPOSER_PLACEHOLDER_PHRASES = [
-  "Ask me anything about your current & archived books",
-  "Type @ for expert skills",
-  "Type / for agents",
-  "Ask me anything about your current & archived books", // final resting state
-];
-
-function useTypingPlaceholder(phrases: string[], typingMs: number, holdMs: number): string {
-  const [displayText, setDisplayText] = useState("");
-  const stateRef = useRef({ idx: 0, char: 0, phase: "typing" as "typing" | "holding" | "erasing" });
-
-  useEffect(() => {
-    let tid: ReturnType<typeof setTimeout>;
-
-    function tick() {
-      const s = stateRef.current;
-      const phrase = phrases[s.idx];
-      const charInterval = typingMs / phrase.length;
-
-      const isLast = s.idx === phrases.length - 1;
-
-      if (s.phase === "typing") {
-        s.char += 1;
-        setDisplayText(phrase.slice(0, s.char));
-        if (s.char >= phrase.length) {
-          if (isLast) return; // last phrase fully typed — stop here
-          s.phase = "holding";
-          tid = setTimeout(tick, holdMs);
-        } else {
-          tid = setTimeout(tick, charInterval);
-        }
-      } else if (s.phase === "holding") {
-        s.phase = "erasing";
-        tick();
-      } else {
-        s.char -= 1;
-        setDisplayText(phrase.slice(0, s.char));
-        if (s.char <= 0) {
-          s.idx = s.idx + 1;
-          s.char = 0;
-          s.phase = "typing";
-          tid = setTimeout(tick, 100);
-        } else {
-          tid = setTimeout(tick, charInterval / 2);
-        }
-      }
-    }
-
-    tid = setTimeout(tick, 3000 + typingMs / phrases[0].length);
-    return () => clearTimeout(tid);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return displayText;
-}
+const COMPOSER_PLACEHOLDER = "Ask anything about your board materials";
 
 // ─── Context shape ────────────────────────────────────────────────────────────
 
@@ -151,6 +102,22 @@ interface SmartAssistContextValue {
   setSelectedInsight: (v: "summary" | "prep" | "risk" | "audit" | null) => void;
   audience: SmartAssistAudience;
   setAudience: (v: SmartAssistAudience) => void;
+  // ─── AGAI integration use cases demo (the director view) ───────────────────────────────
+  // Everything below is inert outside demo mode.
+  demoMode: boolean;
+  /** Scripted answers delivered so far (= index of the next step to prompt). */
+  demoStepsDone: number;
+  /** While a scripted answer is pending: which step is generating and which of
+   *  its reasoning steps is active. Null otherwise. */
+  demoPending: { step: number; active: number } | null;
+  /** Outcome of the step 6 share confirmation. */
+  demoShare: "pending" | "shared" | "cancelled";
+  resolveDemoShare: (v: "shared" | "cancelled") => void;
+  /** Presenter notes panel (header notes button toggles it). Persists for the session. */
+  demoNotesOpen: boolean;
+  setDemoNotesOpen: (open: boolean) => void;
+  /** Start over: fresh chat, share card back to pending. */
+  restartDemo: () => void;
 }
 
 const SmartAssistContext = createContext<SmartAssistContextValue | null>(null);
@@ -179,6 +146,23 @@ function SmartAssistProviderInner({ children }: { children: React.ReactNode }) {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const location = useLocation();
+  // The director view IS the demo: no URL flag, so it survives any navigation.
+  const demoMode = isDemoPath(location.pathname);
+  const [demoPending, setDemoPending] = useState<{ step: number; active: number } | null>(null);
+  const [demoNotesOpen, setDemoNotesOpenState] = useState(
+    () => sessionStorage.getItem("agai-integration-usecases-demo-notes-open") !== "0",
+  );
+  const setDemoNotesOpen = (open: boolean) => {
+    setDemoNotesOpenState(open);
+    sessionStorage.setItem("agai-integration-usecases-demo-notes-open", open ? "1" : "0");
+  };
+  const [demoShare, setDemoShare] = useState<"pending" | "shared" | "cancelled">("pending");
+  const demoTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const clearDemoTimers = () => {
+    demoTimersRef.current.forEach(clearTimeout);
+    demoTimersRef.current = [];
+    setDemoPending(null);
+  };
   const inBook = isBookReaderPath(location.pathname);
   const currentBookTitle = inBook ? (bookTitleForPath(location.pathname) ?? "This book") : null;
   const [sources, setSources] = useState<Source[]>(() =>
@@ -213,10 +197,7 @@ function SmartAssistProviderInner({ children }: { children: React.ReactNode }) {
   const bookScopeTitle = isBookScope ? (bookSource?.label ?? null) : null;
   const setBookScope = () => setSources(mvpSourcesForScope("book", currentBookTitle ?? "This book"));
   const setGlobalScope = () => setSources(mvpSourcesForScope("home"));
-  const animatedComposerPlaceholder = useTypingPlaceholder(COMPOSER_PLACEHOLDER_PHRASES, 1500, 5000);
-  const composerPlaceholder = isBookScope
-    ? "Ask me anything about this book"
-    : animatedComposerPlaceholder;
+  const composerPlaceholder = COMPOSER_PLACEHOLDER;
   const [variantIndex, setVariantIndex] = useState(0);
   const [audience, setAudienceState] = useState<SmartAssistAudience>("admin");
   const audienceRef = useRef<SmartAssistAudience>("admin");
@@ -354,7 +335,12 @@ function SmartAssistProviderInner({ children }: { children: React.ReactNode }) {
     setSelectedInsight(null);
 
     const isOnboarding = text.trim() === ONBOARDING_PROMPT;
-    const triggerMatch = !isOnboarding ? matchTriggerResponse(text) : null;
+    // AGAI integration use cases demo: an exact scripted prompt returns its authored answer.
+    const demoIdx = demoMode ? matchDemoStep(text) : -1;
+    const demoStep = demoIdx >= 0 ? DEMO_STEPS[demoIdx] : null;
+    const triggerMatch = demoStep
+      ? { threadTitle: demoStep.threadTitle, sources: demoStep.sources, richContent: demoStep.richContent }
+      : !isOnboarding ? matchTriggerResponse(text) : null;
     const variantPool = audienceRef.current === "director"
       ? (inBook ? DIRECTOR_CONVERSATION_VARIANTS : DIRECTOR_HOME_CONVERSATION_VARIANTS)
       : CONVERSATION_VARIANTS;
@@ -378,7 +364,8 @@ function SmartAssistProviderInner({ children }: { children: React.ReactNode }) {
       scopePinnedRef.current = true;
       // New chat: auto-create thread, date shown at top
       const now = new Date().toISOString();
-      setChatTimestamp(formatChatDate(now));
+      // The demo story happens on Thursday, November 12, 2026.
+      setChatTimestamp(formatChatDate(demoMode ? "2026-11-12T12:00:00" : now));
       setThreadSplitIndex(null);
       const id = `u-${Date.now()}`;
       // Create thread with an empty title so the list hides it until the title
@@ -409,7 +396,22 @@ function SmartAssistProviderInner({ children }: { children: React.ReactNode }) {
     setPrompt("");
     setIsGenerating(true);
 
-    setTimeout(() => {
+    // Scripted demo answers show each thinking label in turn before the answer.
+    const answerDelay = demoStep ? demoStep.reasoning.length * DEMO_THINKING_LABEL_MS : 1800;
+    if (demoStep) {
+      clearDemoTimers();
+      if (demoStep.action === "share") setDemoShare("pending");
+      setDemoPending({ step: demoIdx, active: 0 });
+      demoStep.reasoning.forEach((_, i) => {
+        if (i === 0) return;
+        demoTimersRef.current.push(
+          setTimeout(() => setDemoPending({ step: demoIdx, active: i }), i * DEMO_THINKING_LABEL_MS),
+        );
+      });
+    }
+
+    const answerTimer = setTimeout(() => {
+      if (demoStep) setDemoPending(null);
       const richContent = isOnboarding
         ? ONBOARDING_RICH_BLOCKS
         : (triggerMatch ? triggerMatch.richContent : responseVariant.richContent);
@@ -425,11 +427,21 @@ function SmartAssistProviderInner({ children }: { children: React.ReactNode }) {
           richContent,
           sources,
           timestamp: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+          ...(demoStep ? { demoStep: demoIdx } : {}),
         },
       ]);
       if (!isOnboarding && !triggerMatch) setVariantIndex((i) => (i + 1) % variantPool.length);
       setIsGenerating(false);
-    }, 1800);
+    }, answerDelay);
+    if (demoStep) demoTimersRef.current.push(answerTimer);
+  };
+
+  const demoStepsDone = demoMode ? messages.filter((m) => m.demoStep !== undefined).length : 0;
+
+  const resetDemoState = () => {
+    clearDemoTimers();
+    setDemoShare("pending");
+    setIsGenerating(false);
   };
 
   return (
@@ -476,6 +488,7 @@ function SmartAssistProviderInner({ children }: { children: React.ReactNode }) {
         setGlobalScope,
         composerPlaceholder,
         resetChat: () => {
+          resetDemoState();
           setMessages([]);
           setChatTimestamp(null);
           setCurrentThreadId(null);
@@ -521,6 +534,23 @@ function SmartAssistProviderInner({ children }: { children: React.ReactNode }) {
         setSelectedInsight,
         audience,
         setAudience,
+        demoMode,
+        demoStepsDone,
+        demoPending,
+        demoNotesOpen,
+        setDemoNotesOpen,
+        demoShare,
+        resolveDemoShare: setDemoShare,
+        restartDemo: () => {
+          resetDemoState();
+          setMessages([]);
+          setChatTimestamp(null);
+          setCurrentThreadId(null);
+          setThreadSplitIndex(null);
+          hasInteractedWithThread.current = false;
+          setPrompt("");
+          reseedScopeForFreshChat();
+        },
       }}
     >
       {children}

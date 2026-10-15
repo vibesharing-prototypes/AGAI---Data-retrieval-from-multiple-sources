@@ -9,7 +9,6 @@ import {
   useTheme,
 } from "@mui/material";
 
-import AiSparkleIcon from "@diligentcorp/atlas-react-bundle/icons/AiSparkle";
 import FilterIcon from "@diligentcorp/atlas-react-bundle/icons/Filter";
 import SearchIcon from "@diligentcorp/atlas-react-bundle/icons/Search";
 import WorkspacesIcon from "@diligentcorp/atlas-react-bundle/icons/Workspaces";
@@ -206,7 +205,6 @@ export default function DirectorResourceCenterPage() {
   const {
     panelOpen,
     overlayOpen,
-    openPanel,
     closePanel,
     closeOverlay,
     expandToOverlay,
@@ -275,40 +273,6 @@ export default function DirectorResourceCenterPage() {
             >
               Resource center
             </Typography>
-            {!panelOpen && (
-              <Button
-                variant="outlined"
-                color="ai"
-                startIcon={<AiSparkleIcon size="lg" />}
-                onClick={() => openPanel()}
-                sx={{
-                  height: 40,
-                  px: "12px",
-                  fontSize: "16px",
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 600,
-                  lineHeight: "24px",
-                  letterSpacing: "0.16px",
-                  textTransform: "none",
-                  border: "1px solid transparent !important",
-                  backgroundColor: "transparent !important",
-                  backgroundImage: "linear-gradient(#fff, #fff), linear-gradient(128deg, #b11f62 17.49%, #1c4ee4 100%) !important",
-                  backgroundOrigin: "border-box !important",
-                  backgroundClip: "padding-box, border-box !important",
-                  "&::before": { display: "none" },
-                  "&:hover, &:not(.Mui-disabled):hover": {
-                    border: "1px solid transparent !important",
-                    backgroundColor: "transparent !important",
-                    backgroundImage: "linear-gradient(#f3f3f3, #f3f3f3), linear-gradient(128deg, #b11f62 17.49%, #1c4ee4 100%) !important",
-                    backgroundOrigin: "border-box !important",
-                    backgroundClip: "padding-box, border-box !important",
-                  },
-                  "&:hover::before, &::after, &:hover::after": { display: "none" },
-                }}
-              >
-                Ask GovernAI
-              </Button>
-            )}
           </Stack>
 
           {/* Toolbar */}

@@ -84,19 +84,30 @@ export interface MvpScopeProps {
   bookScopeTitle: string | null;
   /** Whether the conversation is currently scoped to a book. */
   isBookScope: boolean;
+  /** Whether the conversation is scoped to the Resource center. */
+  isResourceScope?: boolean;
   onSelectBook: () => void;
   onSelectGlobal: () => void;
+  onSelectResource?: () => void;
+  /** Whether internet sources are included. */
+  internetEnabled?: boolean;
+  onToggleInternet?: () => void;
 }
 
 const GLOBAL_LABEL = "Current & Archived books";
+const RESOURCE_LABEL = "Resource center";
 
 function MvpScopeControl({
   inBook,
   currentBookTitle,
   bookScopeTitle,
   isBookScope,
+  isResourceScope = false,
   onSelectBook,
   onSelectGlobal,
+  onSelectResource,
+  internetEnabled = false,
+  onToggleInternet,
 }: MvpScopeProps) {
   const { tokens: { semantic: { color, font } } } = useTheme();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
@@ -132,11 +143,12 @@ function MvpScopeControl({
   }
 
   const bookLabel = currentBookTitle ?? "This book";
-  const buttonLabel = isBookScope ? bookLabel : GLOBAL_LABEL;
+  const activeScope = isBookScope ? bookLabel : isResourceScope ? RESOURCE_LABEL : GLOBAL_LABEL;
 
   const options = [
-    { key: "book",   label: bookLabel,    selected: isBookScope,  onClick: onSelectBook },
-    { key: "global", label: GLOBAL_LABEL, selected: !isBookScope, onClick: onSelectGlobal },
+    { key: "book",     label: bookLabel,     selected: isBookScope,     onClick: onSelectBook },
+    { key: "global",   label: GLOBAL_LABEL,  selected: !isBookScope && !isResourceScope, onClick: onSelectGlobal },
+    { key: "resource", label: RESOURCE_LABEL, selected: isResourceScope, onClick: () => onSelectResource?.() },
   ];
 
   return (
@@ -153,7 +165,7 @@ function MvpScopeControl({
           "& .MuiButton-endIcon": { color: "inherit" },
         }}
       >
-        {buttonLabel}
+        {activeScope}
       </Button>
 
       <Menu
@@ -162,13 +174,11 @@ function MvpScopeControl({
         onClose={() => setAnchor(null)}
         anchorOrigin={{ vertical: "top", horizontal: "left" }}
         transformOrigin={{ vertical: "bottom", horizontal: "left" }}
-        // Tokens are applied explicitly because the Menu renders in a portal
-        // that doesn't inherit the Atlas-light CSS custom properties.
         slotProps={{
           paper: {
             sx: {
               mb: "6px",
-              minWidth: 220,
+              minWidth: 240,
               borderRadius: "8px",
               border: `1px solid ${color.ui.divider.default.value}`,
               backgroundColor: color.surface.default.value,
@@ -178,6 +188,11 @@ function MvpScopeControl({
         }}
         MenuListProps={{ sx: { py: "4px" } }}
       >
+        <Box sx={{ px: "12px", py: "6px" }}>
+          <Typography sx={{ fontSize: "11px", fontWeight: 600, color: color.type.muted.value, textTransform: "uppercase", letterSpacing: "0.6px" }}>
+            Search scope
+          </Typography>
+        </Box>
         {options.map((opt) => (
           <MenuItem
             key={opt.key}
@@ -208,6 +223,40 @@ function MvpScopeControl({
             </Typography>
           </MenuItem>
         ))}
+        {onToggleInternet !== undefined && (
+          <>
+            <Box sx={{ mx: "12px", my: "4px", height: "1px", backgroundColor: color.ui.divider.default.value }} />
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                px: "12px",
+                py: "8px",
+                cursor: "pointer",
+                "&:hover": { backgroundColor: color.surface.variant.value },
+              }}
+              onClick={(e) => { e.stopPropagation(); onToggleInternet?.(); }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: font.text.md.fontFamily.value,
+                  fontSize: font.text.md.fontSize.value,
+                  lineHeight: font.text.md.lineHeight.value,
+                  color: color.type.default.value,
+                }}
+              >
+                Include internet sources
+              </Typography>
+              <Switch
+                size="small"
+                checked={internetEnabled}
+                onChange={(e) => { e.stopPropagation(); onToggleInternet?.(); }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Box>
+          </>
+        )}
       </Menu>
     </>
   );

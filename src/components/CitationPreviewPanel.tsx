@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
-import { Box, Button, Stack, Typography, useTheme } from "@mui/material";
+import { useLocation } from "react-router";
+import { Box, Button, IconButton, Stack, Tooltip, Typography, useTheme } from "@mui/material";
 import LinkIcon from "@diligentcorp/atlas-react-bundle/icons/Link";
 import CheckedIcon from "@diligentcorp/atlas-react-bundle/icons/Checked";
 import DocumentViewerToolbar, { ZOOM_LEVELS } from "./DocumentViewerToolbar.js";
 import { useCitationPreview } from "../context/CitationPreviewContext.js";
-import { useSmartAssist } from "../context/SmartAssistContext.js";
 import { DOCUMENTS, getDocumentPage, type DocumentDef } from "../data/documents.js";
 import type { Source } from "../data/mockData.js";
+import { SOURCE_MODULES } from "./SourcesBlock.js";
 
 const PANEL_WIDTH = 600;
 const PAGE_WIDTH_BASE = 540; // logical width at 100% zoom
@@ -86,8 +86,6 @@ function FallbackDocument({ source, zoomPct }: { source: Source; zoomPct: number
 export default function CitationPreviewPanel() {
   const { tokens: { semantic: { color } } } = useTheme();
   const { previewSource, previewPage, previewContext, setPreviewPage, closeCitation } = useCitationPreview();
-  const { overlayOpen, collapseToPanel, openPanel } = useSmartAssist();
-  const navigate = useNavigate();
   const location = useLocation();
   const isDirectorRoute = location.pathname.startsWith("/director");
 
@@ -111,26 +109,26 @@ export default function CitationPreviewPanel() {
   };
 
   const handleOpen = () => {
+    // Resource center documents open in the resource center document viewer.
+    if (previewSource?.module === "Resource Center" && previewSource.documentId && isDirectorRoute) {
+      const params = new URLSearchParams({ documentPage: String(previewPage) });
+      window.open(`/director/resource-center/doc/${previewSource.documentId}?${params.toString()}`, "_blank", "noopener");
+      return;
+    }
+    // Documents outside a book (Decision hub, Data room) open the page they live in.
+    if (previewSource?.deepLink && !doc?.bookId) {
+      window.open(previewSource.deepLink, "_blank", "noopener");
+      return;
+    }
     if (!previewSource?.documentId) return;
     const targetDoc = DOCUMENTS[previewSource.documentId];
-    if (!targetDoc) return;
+    if (!targetDoc?.bookId) return;
     const documentId = previewSource.documentId;
-    const documentPage = previewPage;
-    closeCitation();
-    // Close the full-screen overlay but keep the AI panel visible alongside the book.
-    if (overlayOpen) collapseToPanel();
-    else openPanel();
-    // Route to the correct book reader based on the current route, not the
-    // async-synced context audience value (which can lag on first render).
-    if (isDirectorRoute) {
-      navigate(`/director/books/${targetDoc.bookId}`, {
-        state: { documentId, documentPage },
-      });
-    } else {
-      navigate(`/admin/books/${targetDoc.bookId}`, {
-        state: { openTab: "review", documentId, documentPage },
-      });
-    }
+    const params = new URLSearchParams({ documentId, documentPage: String(previewPage) });
+    if (!isDirectorRoute) params.set("openTab", "review");
+    const base = isDirectorRoute ? "/director/books" : "/admin/books";
+    // Open in a new tab; router state doesn't cross tabs, so pass it as query params.
+    window.open(`${base}/${targetDoc.bookId}?${params.toString()}`, "_blank", "noopener");
   };
 
   const open = previewSource !== null;
@@ -190,21 +188,21 @@ export default function CitationPreviewPanel() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {[doc?.book ?? previewSource.book, currentPageDef?.label ?? `Page ${currentPage}`]
+                  {[doc?.location ?? doc?.book ?? previewSource.book, currentPageDef?.label ?? `Page ${currentPage}`]
                     .filter(Boolean)
                     .join(" · ")}
                 </Typography>
               </Box>
 
-              <Button
-                variant="text"
-                size="medium"
-                onClick={handleOpen}
-                disabled={!previewSource.documentId}
-                sx={{ flexShrink: 0, fontWeight: 600, whiteSpace: "nowrap" }}
-              >
-                Open
-              </Button>
+              <Tooltip title={copied ? "Page link copied" : "Copy page link"}>
+                <IconButton
+                  aria-label="Copy page link"
+                  onClick={handleCopy}
+                  sx={{ flexShrink: 0 }}
+                >
+                  {copied ? <CheckedIcon size="md" /> : <LinkIcon size="md" />}
+                </IconButton>
+              </Tooltip>
             </Stack>
           </Box>
 
@@ -276,11 +274,11 @@ export default function CitationPreviewPanel() {
             <Button
               variant="outlined"
               size="medium"
-              startIcon={copied ? <CheckedIcon size="md" /> : <LinkIcon size="md" />}
-              onClick={handleCopy}
+              onClick={handleOpen}
+              disabled={!doc?.bookId && !previewSource.deepLink}
               sx={{ fontWeight: 600 }}
             >
-              {copied ? "Director page link copied" : "Copy director page link"}
+              {!doc?.bookId && previewSource.module ? `Open in ${SOURCE_MODULES[previewSource.module].label}` : "Open in Boards"}
             </Button>
           </Box>
         </>

@@ -27,7 +27,15 @@ export type DocumentId =
   | "five-year-plan-jun-2026"
   | "strategic-plan-refresh"
   | "esg-disclosure-h1-2026"
-  | "internal-audit-log-q2-2026";
+  | "internal-audit-log-q2-2026"
+  // ─── AGAI integration use cases demo docs (Janice's December Risk Committee) ─────────────────
+  | "rk-agenda-sep-2025"
+  | "rk-agenda-dec-2025"
+  | "rk-minutes-dec-2025"
+  | "dh-cyber-investment-fy2026"
+  | "ns-pentest-fy2026-signed"
+  | "ns-pentest-fy2026-draft"
+  | "rc-vulnerability-incident-policy";
 
 export interface DocumentPageDef {
   page: number;        // 1-based; 1 = cover
@@ -38,11 +46,16 @@ export interface DocumentPageDef {
 export interface DocumentDef {
   id: DocumentId;
   title: string;
+  /** Where the document lives, shown in the preview header: a book title, or a
+   *  module location such as "Decision Hub" for documents that aren't in a book. */
   book: string;
-  /** adminBooks id where this document lives in its assembled form. */
-  bookId: string;
+  /** Module location label for documents outside a book (Decision Hub, Data Room). */
+  location?: string;
+  /** adminBooks id where this document lives in its assembled form. Absent for
+   *  documents that aren't part of a book. */
+  bookId?: string;
   /** 1-based page in the assembled book where this document starts. */
-  bookStartPage: number;
+  bookStartPage?: number;
   documentType: string;
   date: string;
   pages: DocumentPageDef[];
@@ -329,6 +342,103 @@ export const DOCUMENTS: Record<DocumentId, DocumentDef> = {
       { page: 2, label: "Climate Disclosure & Financed-Emissions Risk",           image: "/doc-pages/esg-disclosure-h1-2026/page-2.png" },
     ],
   },
+
+  // ─── AGAI integration use cases demo documents (Meridian Capital Group, Risk Committee) ──────
+  // Used only by the scripted director flow in src/data/demo-agai-integration-usecases.ts. The
+  // Risk Committee agendas and minutes live in their own books in adminBooks
+  // (the reader shows the cited document's pages); Decision Hub and Data Room
+  // documents have no book at all.
+  "rk-agenda-sep-2025": {
+    id: "rk-agenda-sep-2025",
+    title: "Agenda — Risk Committee, September 17, 2025",
+    book: "Risk Committee — September 2025",
+    bookId: "rk-sep-2025",
+    bookStartPage: 1,
+    documentType: "Agenda",
+    date: "September 17, 2025",
+    pages: [
+      { page: 1, label: "Cover & Contents", image: "/doc-pages/rk-agenda-sep-2025/page-1.png" },
+      { page: 2, label: "Order of business", image: "/doc-pages/rk-agenda-sep-2025/page-2.png" },
+    ],
+  },
+  "rk-agenda-dec-2025": {
+    id: "rk-agenda-dec-2025",
+    title: "Agenda — Risk Committee, December 3, 2025",
+    book: "Risk Committee — December 2025",
+    bookId: "rk-dec-2025",
+    bookStartPage: 1,
+    documentType: "Agenda",
+    date: "December 3, 2025",
+    pages: [
+      { page: 1, label: "Cover & Contents", image: "/doc-pages/rk-agenda-dec-2025/page-1.png" },
+      { page: 2, label: "Order of business", image: "/doc-pages/rk-agenda-dec-2025/page-2.png" },
+    ],
+  },
+  "rk-minutes-dec-2025": {
+    id: "rk-minutes-dec-2025",
+    title: "Minutes — Risk Committee, December 3, 2025",
+    book: "Risk Committee — March 2026",
+    bookId: "rk-mar-2026",
+    bookStartPage: 1,
+    documentType: "Minutes",
+    date: "December 3, 2025",
+    pages: [
+      { page: 1, label: "Cover & Contents", image: "/doc-pages/rk-minutes-dec-2025/page-1.png" },
+      { page: 2, label: "Section 1 — Attendance and agenda", image: "/doc-pages/rk-minutes-dec-2025/page-2.png" },
+      { page: 3, label: "Section 2 — Item 5: cyber resilience programme for FY2026", image: "/doc-pages/rk-minutes-dec-2025/page-3.png" },
+    ],
+  },
+  "dh-cyber-investment-fy2026": {
+    id: "dh-cyber-investment-fy2026",
+    title: "Resolution — Incremental investment in endpoint detection and identity controls (signed)",
+    book: "Decision Hub",
+    location: "Decision Hub",
+    documentType: "Signed resolution",
+    date: "June 9, 2026",
+    pages: [
+      { page: 1, label: "Cover & Contents", image: "/doc-pages/dh-cyber-investment-fy2026/page-1.png" },
+      { page: 2, label: "Resolution text and budget", image: "/doc-pages/dh-cyber-investment-fy2026/page-2.png" },
+      { page: 3, label: "Votes and signatures", image: "/doc-pages/dh-cyber-investment-fy2026/page-3.png" },
+    ],
+  },
+  "ns-pentest-fy2026-signed": {
+    id: "ns-pentest-fy2026-signed",
+    title: "Northgate Security Partners — Annual penetration test attestation FY2026 (signed)",
+    book: "Data Room · Risk Committee",
+    location: "Data Room · Risk Committee",
+    documentType: "Security assurance",
+    date: "Signed October 9, 2026",
+    pages: [
+      { page: 1, label: "Cover & Contents", image: "/doc-pages/ns-pentest-fy2026-signed/page-1.png" },
+      { page: 2, label: "Scope and methodology", image: "/doc-pages/ns-pentest-fy2026-signed/page-2.png" },
+      { page: 3, label: "Findings summary", image: "/doc-pages/ns-pentest-fy2026-signed/page-3.png" },
+    ],
+  },
+  "ns-pentest-fy2026-draft": {
+    id: "ns-pentest-fy2026-draft",
+    title: "Northgate Security Partners — Annual penetration test attestation FY2026 (draft)",
+    book: "Data Room · Risk Committee",
+    location: "Data Room · Risk Committee",
+    documentType: "Security assurance",
+    date: "Draft, September 2026",
+    pages: [
+      { page: 1, label: "Cover & Contents", image: "/doc-pages/ns-pentest-fy2026-draft/page-1.png" },
+      { page: 2, label: "Scope and methodology", image: "/doc-pages/ns-pentest-fy2026-draft/page-2.png" },
+      { page: 3, label: "Findings summary", image: "/doc-pages/ns-pentest-fy2026-draft/page-3.png" },
+    ],
+  },
+  "rc-vulnerability-incident-policy": {
+    id: "rc-vulnerability-incident-policy",
+    title: "Vulnerability and incident response policy",
+    book: "Resource Center",
+    location: "Resource Center · Risk Committee",
+    documentType: "Policy",
+    date: "Published, next review Q4 2026",
+    pages: [
+      { page: 1, label: "Cover & Contents", image: "/doc-pages/rc-vulnerability-incident-policy/page-1.png" },
+      { page: 2, label: "Remediation windows and escalation", image: "/doc-pages/rc-vulnerability-incident-policy/page-2.png" },
+    ],
+  },
 };
 
 // ─── Assembled "Q2 2026 Board Package" book (bookId "1") ─────────────────────
@@ -571,6 +681,6 @@ export function getBookPageTotal(bookId: string): number {
 /** Map a (documentId, page-within-document) citation to its page in the assembled book. */
 export function getBookPageForCitation(id: DocumentId, targetPage: number): number {
   const doc = DOCUMENTS[id];
-  const total = getBookPageTotal(doc.bookId);
-  return Math.min(total, Math.max(1, doc.bookStartPage + (targetPage - 1)));
+  const total = getBookPageTotal(doc.bookId ?? "");
+  return Math.min(total, Math.max(1, (doc.bookStartPage ?? 1) + (targetPage - 1)));
 }

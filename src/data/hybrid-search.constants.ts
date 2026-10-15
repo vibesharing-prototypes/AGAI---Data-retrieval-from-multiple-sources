@@ -814,6 +814,23 @@ export const STATIC_CHAT_THREADS: ChatThread[] = [
   { id: "th-cyber-4", title: "Ransomware threat landscape briefing",         createdAt: "2026-06-14T11:45:00+0200", updatedAt: "2026-06-14T11:45:00+0200", messages: [], projectId: "th-1" },
   { id: "th-cyber-5", title: "Board cyber risk tolerance framework",         createdAt: "2026-05-22T16:00:00+0200", updatedAt: "2026-05-22T16:00:00+0200", messages: [], projectId: "th-1" },
   { id: "th-cyber-6", title: "Annual penetration test findings",             createdAt: "2026-04-10T09:30:00+0200", updatedAt: "2026-04-10T09:30:00+0200", messages: [], projectId: "th-1" },
+  // Data privacy project child threads (projectId: "th-4")
+  { id: "th-priv-1", title: "GDPR data breach notification timelines",      createdAt: "2026-09-10T09:00:00+0200", updatedAt: "2026-09-10T09:00:00+0200", messages: [], projectId: "th-4" },
+  { id: "th-priv-2", title: "Data retention policy review",                 createdAt: "2026-08-18T14:00:00+0200", updatedAt: "2026-08-18T14:00:00+0200", messages: [], projectId: "th-4" },
+  { id: "th-priv-3", title: "Privacy impact assessment — Q2 results",       createdAt: "2026-07-22T10:30:00+0200", updatedAt: "2026-07-22T10:30:00+0200", messages: [], projectId: "th-4" },
+  { id: "th-priv-4", title: "Third-party data sharing agreements audit",    createdAt: "2026-06-05T11:00:00+0200", updatedAt: "2026-06-05T11:00:00+0200", messages: [], projectId: "th-4" },
+  // Regulatory changes project child threads (projectId: "th-5")
+  { id: "th-reg-1", title: "SEC climate disclosure rule analysis",           createdAt: "2026-09-08T09:30:00+0200", updatedAt: "2026-09-08T09:30:00+0200", messages: [], projectId: "th-5" },
+  { id: "th-reg-2", title: "New ESG reporting standards — Q3 update",       createdAt: "2026-08-12T14:15:00+0200", updatedAt: "2026-08-12T14:15:00+0200", messages: [], projectId: "th-5" },
+  { id: "th-reg-3", title: "Regulatory compliance calendar 2026–2027",      createdAt: "2026-07-01T10:00:00+0200", updatedAt: "2026-07-01T10:00:00+0200", messages: [], projectId: "th-5" },
+  // Bylaws project child threads (projectId: "th-6")
+  { id: "th-byl-1", title: "Shareholder voting procedure changes",           createdAt: "2026-09-02T10:00:00+0200", updatedAt: "2026-09-02T10:00:00+0200", messages: [], projectId: "th-6" },
+  { id: "th-byl-2", title: "Amendment to executive compensation clause",    createdAt: "2026-08-05T14:30:00+0200", updatedAt: "2026-08-05T14:30:00+0200", messages: [], projectId: "th-6" },
+  { id: "th-byl-3", title: "Director qualification requirements update",    createdAt: "2026-07-14T09:00:00+0200", updatedAt: "2026-07-14T09:00:00+0200", messages: [], projectId: "th-6" },
+  // Related-party transactions project child threads (projectId: "th-7")
+  { id: "th-rpt-1", title: "Q4 2025 related-party transaction log review",  createdAt: "2026-09-20T10:00:00+0200", updatedAt: "2026-09-20T10:00:00+0200", messages: [], projectId: "th-7" },
+  { id: "th-rpt-2", title: "Independent director approval workflow",        createdAt: "2026-08-25T14:00:00+0200", updatedAt: "2026-08-25T14:00:00+0200", messages: [], projectId: "th-7" },
+  { id: "th-rpt-3", title: "Conflict of interest disclosure checklist",     createdAt: "2026-07-30T11:15:00+0200", updatedAt: "2026-07-30T11:15:00+0200", messages: [], projectId: "th-7" },
 ];
 
 // ─── Onboarding ───────────────────────────────────────────────────────────────
@@ -989,7 +1006,7 @@ const TRIGGER_MAP: Record<string, TriggerResponse> = {
       {
         type: "p",
         spans: [
-          "Smart Assist is built for governance work — your board materials, committee decisions, regulatory context, and meeting preparation. Drafting product marketing sits outside that. If you're preparing board communications about the launch, I can help you find what your materials say about it.",
+          "Ask GovernAI is built for governance work — your board materials, committee decisions, regulatory context, and meeting preparation. Drafting product marketing sits outside that. If you're preparing board communications about the launch, I can help you find what your materials say about it.",
         ],
       },
     ],

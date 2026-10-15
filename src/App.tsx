@@ -6,6 +6,7 @@ import "./styles.css";
 
 import Navigation from "./Navigation.js";
 import ViewSwitcherButton from "./components/ViewSwitcherButton.js";
+import AskGovernAIButton from "./components/AskGovernAIButton.js";
 import SettingsPage from "./pages/SettingsPage.js";
 import OrganizationSettingsPage from "./pages/OrganizationSettingsPage.js";
 import SimplePage from "./pages/SimplePage.js";
@@ -16,7 +17,15 @@ import DirectorHomePage from "./pages/DirectorHomePage.js";
 import DirectorBooksPage from "./pages/DirectorBooksPage.js";
 import DirectorBookReaderPage from "./pages/DirectorBookReaderPage.js";
 import DirectorResourceCenterPage from "./pages/DirectorResourceCenterPage.js";
+import DirectorResourceDocumentPage from "./pages/DirectorResourceDocumentPage.js";
 import ResourceCenterPage from "./pages/ResourceCenterPage.js";
+import DemoIntroDialog from "./components/demo/DemoIntroDialog.js";
+import DemoAgaiIntegrationUsecasesSummaryPage from "./pages/DemoAgaiIntegrationUsecasesSummaryPage.js";
+import TasksPage from "./pages/TasksPage.js";
+import DataRoomFolderPage from "./pages/DataRoomFolderPage.js";
+import TaskDetailPage from "./pages/TaskDetailPage.js";
+import ApprovalDetailPage from "./pages/ApprovalDetailPage.js";
+import DemoSourceStubPage from "./pages/DemoSourceStubPage.js";
 import { SmartAssistProvider, useSmartAssist } from "./context/SmartAssistContext.js";
 import { CitationPreviewProvider } from "./context/CitationPreviewContext.js";
 
@@ -513,9 +522,7 @@ function ViewSwitcherForRoute() {
   if (pathname === "/books" || pathname.startsWith("/admin")) {
     return <ViewSwitcherButton label="Open director view" href="/director" />;
   }
-  if (pathname.startsWith("/director")) {
-    return <ViewSwitcherButton label="Open administrator view" href="/admin/books" />;
-  }
+  // The director view is the demo — no hop to the administrator view from it.
   return null;
 }
 
@@ -541,7 +548,7 @@ function SmartAssistRouteSync() {
 }
 
 function AppShell() {
-  const orgLabel = "ACME Corp";
+  const orgLabel = "Meridian Capital Group";
   usePanelMode();
   useNavContainerFullHeight();
   useDisableHeaderMenuClicks();
@@ -559,6 +566,8 @@ function AppShell() {
       <CitationPreviewProvider>
         <SmartAssistProvider>
           <SmartAssistRouteSync />
+          <AskGovernAIButton />
+          <DemoIntroDialog />
           <ViewSwitcherForRoute />
           <Outlet />
         </SmartAssistProvider>
@@ -583,11 +592,19 @@ export default function App() {
         <Route path="resource-center" element={<ResourceCenterPage />} />
         <Route path="admin/resource-center" element={<ResourceCenterPage />} />
         <Route path="director/resource-center" element={<DirectorResourceCenterPage />} />
+        <Route path="director/resource-center/doc/:documentId" element={<DirectorResourceDocumentPage />} />
         <Route path="books" element={<AdminBooksPage />} />
         <Route path="books/:id" element={<BookEditorPage />} />
         <Route path="admin/books" element={<AdminBooksPage />} />
         <Route path="admin/books/:id" element={<BookEditorPage />} />
         <Route path="smart-assist" element={<AIAssistantPage />} />
+        {/* AGAI integration use cases demo (scripted, presenter-driven) */}
+        <Route path="tasks" element={<TasksPage />} />
+        <Route path="data-room/:folderId" element={<DataRoomFolderPage />} />
+        <Route path="tasks/:taskId" element={<TaskDetailPage />} />
+        <Route path="decision-hub/approvals/:approvalId" element={<ApprovalDetailPage />} />
+        <Route path="demo/AGAI-integration-usecases/summary" element={<DemoAgaiIntegrationUsecasesSummaryPage />} />
+        <Route path="demo/AGAI-integration-usecases/open" element={<DemoSourceStubPage />} />
       </Route>
     </Routes>
   );

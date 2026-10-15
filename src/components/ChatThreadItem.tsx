@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 
 import EditIcon from "@diligentcorp/atlas-react-bundle/icons/Edit";
+import FolderIcon from "@diligentcorp/atlas-react-bundle/icons/Folder";
 import MoreIcon from "@diligentcorp/atlas-react-bundle/icons/More";
 import PinIcon from "@diligentcorp/atlas-react-bundle/icons/Pin";
 import TrashIcon from "@diligentcorp/atlas-react-bundle/icons/Trash";
@@ -35,11 +36,12 @@ interface ChatThreadItemProps {
   isPinned?: boolean;
   onPin?: (id: string, currentlyPinned: boolean) => void;
   onNewChat?: () => void;
+  onMoveToProject?: (id: string) => void;
 }
 
 const TEXT_DEFAULT = "rgb(36,38,40)";
 
-export default function ChatThreadItem({ thread, isActive = false, variant, onLoadThread, isPinned = false, onPin, onNewChat }: ChatThreadItemProps) {
+export default function ChatThreadItem({ thread, isActive = false, variant, onLoadThread, isPinned = false, onPin, onNewChat, onMoveToProject }: ChatThreadItemProps) {
   const { tokens: { semantic: { color } } } = useTheme();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const isMenuOpen = Boolean(anchorEl);
@@ -218,6 +220,17 @@ export default function ChatThreadItem({ thread, isActive = false, variant, onLo
             </Stack>
           </MenuItem>
         )}
+        <MenuItem
+          onClick={() => { onMoveToProject?.(thread.id); handleCloseMenu(); }}
+          sx={{ px: "16px", py: "12px", gap: 0, "&:hover": { backgroundColor: color.surface.variant.value } }}
+        >
+          <Stack direction="row" alignItems="center" gap="12px">
+            <FolderIcon size="md" />
+            <Typography sx={{ fontSize: "14px", lineHeight: "20px", color: color.type.default.value }}>
+              Move to project
+            </Typography>
+          </Stack>
+        </MenuItem>
         <MenuItem
           onClick={handleCloseMenu}
           sx={{ px: "16px", py: "12px", gap: 0, "&:hover": { backgroundColor: color.surface.variant.value } }}

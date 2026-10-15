@@ -10,7 +10,8 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import type { RichBlock, Span } from "../data/hybrid-search.constants.js";
+import type { ReactNode } from "react";
+import type { Cite, RichBlock, Span } from "../data/hybrid-search.constants.js";
 import type { Source } from "../data/mockData.js";
 import { useCitationPreview, type PreviewContext } from "../context/CitationPreviewContext.js";
 
@@ -71,7 +72,7 @@ export function parseCiteText(text: string, counter?: CiteCounter): Span[] {
 
 // ─── Inline citation chip ─────────────────────────────────────────────────────
 
-function CiteBadge({ n, source, id, previewContext }: { n: number; source?: Source; id: string; previewContext?: PreviewContext }) {
+export function CiteBadge({ n, source, id, previewContext }: { n: number; source?: Source; id: string; previewContext?: PreviewContext }) {
   const { tokens: { semantic: { color } } } = useTheme();
   const { openCitation, activeChipId } = useCitationPreview();
   const isActive = activeChipId === id;
@@ -146,29 +147,57 @@ function CiteBadge({ n, source, id, previewContext }: { n: number; source?: Sour
 
 // ─── Span list ────────────────────────────────────────────────────────────────
 
+// The last word before a citation (plus any trailing space). It is kept on one
+// line together with the chip, so a chip that doesn't fit never wraps alone onto
+// the next line; it takes that word with it.
+const TRAILING_WORD = /(\S+\s*)$/;
+
 function Spans({ spans, sources, idPrefix, previewContext }: { spans: Span[]; sources?: Source[]; idPrefix?: string; previewContext?: PreviewContext }) {
-  return (
-    <>
-      {spans.map((span, i) =>
-        typeof span === "string" ? (
-          <span key={i}>{span}</span>
-        ) : (
-          <CiteBadge
-            key={i}
-            n={span.label ?? span.cite}
-            source={sources?.find((s) => s.index === span.cite)}
-            id={idPrefix ? `${idPrefix}-c${i}` : `badge-${i}`}
-            previewContext={previewContext}
-          />
-        )
-      )}
-    </>
-  );
+  const badge = (i: number) => {
+    const span = spans[i] as Cite;
+    return (
+      <CiteBadge
+        key={i}
+        n={span.label ?? span.cite}
+        source={sources?.find((s) => s.index === span.cite)}
+        id={idPrefix ? `${idPrefix}-c${i}` : `badge-${i}`}
+        previewContext={previewContext}
+      />
+    );
+  };
+
+  const nodes: ReactNode[] = [];
+  for (let i = 0; i < spans.length; i++) {
+    const span = spans[i];
+    const next = spans[i + 1];
+    if (typeof span === "string" && next !== undefined && typeof next !== "string") {
+      const m = span.match(TRAILING_WORD);
+      if (m && m.index !== undefined) {
+        // Text before the glued word wraps normally; the word + the run of
+        // adjacent chips (separated only by spaces) stay together.
+        if (m.index > 0) nodes.push(<span key={`${i}-head`}>{span.slice(0, m.index)}</span>);
+        const group: ReactNode[] = [m[0]];
+        let j = i + 1;
+        while (j < spans.length) {
+          const s = spans[j];
+          if (typeof s !== "string") group.push(badge(j));
+          else if (s.trim() === "" && spans[j + 1] !== undefined && typeof spans[j + 1] !== "string") group.push(s);
+          else break;
+          j++;
+        }
+        nodes.push(<span key={`${i}-glue`} style={{ whiteSpace: "nowrap" }}>{group}</span>);
+        i = j - 1;
+        continue;
+      }
+    }
+    nodes.push(typeof span === "string" ? <span key={i}>{span}</span> : badge(i));
+  }
+  return <>{nodes}</>;
 }
 
 // ─── Main renderer ────────────────────────────────────────────────────────────
 
-export default function RichAIMessageContent({ blocks, sources, messageId, previewContext }: { blocks: RichBlock[]; sources?: Source[]; messageId?: string; previewContext?: PreviewContext }) {
+export default function RichAIMessageContent({ blocks, sources, messageId, previewContext, bodyFontSize }: { blocks: RichBlock[]; sources?: Source[]; messageId?: string; previewContext?: PreviewContext; /** Overrides the 13px table text (the AGAI integration use cases demo uses 14px throughout). */ bodyFontSize?: string }) {
   const { tokens: { semantic: { color } } } = useTheme();
 
   const DIVIDER = color.ui.divider.default.value;
@@ -233,7 +262,7 @@ export default function RichAIMessageContent({ blocks, sources, messageId, previ
                       <TableCell
                         key={col}
                         sx={{
-                          fontSize: "13px",
+                          fontSize: bodyFontSize ?? "13px",
                           fontWeight: 600,
                           color: TEXT,
                           lineHeight: "18px",
@@ -256,7 +285,7 @@ export default function RichAIMessageContent({ blocks, sources, messageId, previ
                         <TableCell
                           key={ci}
                           sx={{
-                            fontSize: "13px",
+                            fontSize: bodyFontSize ?? "13px",
                             color: block.defaultTextColor ? TEXT : (ci === 0 ? TEXT : MUTED),
                             fontWeight: block.defaultTextColor ? 400 : (ci === 0 ? 500 : 400),
                             lineHeight: "20px",

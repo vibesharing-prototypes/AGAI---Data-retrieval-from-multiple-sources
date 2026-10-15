@@ -3,14 +3,27 @@ import CurrentBooksIcon from "@diligentcorp/atlas-react-bundle/icons/CurrentBook
 import HomeIcon from "@diligentcorp/atlas-react-bundle/icons/Home";
 import ResourceCenterIcon from "@diligentcorp/atlas-react-bundle/icons/ResourceCenter";
 import OrganizationIcon from "@diligentcorp/atlas-react-bundle/icons/Organization";
+import ClipboardCheckIcon from "@diligentcorp/atlas-react-bundle/icons/ClipboardCheck";
 import ExpandLeftIcon from "@diligentcorp/atlas-react-bundle/icons/ExpandLeft";
-import { SvgIcon } from "@mui/material";
+import { Box, SvgIcon, useTheme } from "@mui/material";
+import type { ReactNode } from "react";
+import ExpandDownIcon from "@diligentcorp/atlas-react-bundle/icons/ExpandDown";
+import ExpandRightIcon from "@diligentcorp/atlas-react-bundle/icons/ExpandRight";
+import ExpandUpIcon from "@diligentcorp/atlas-react-bundle/icons/ExpandUp";
+import TeamDataRoomIcon from "@diligentcorp/atlas-react-bundle/icons/TeamDataRoom";
+import TrashIcon from "@diligentcorp/atlas-react-bundle/icons/Trash";
+import ChartBarIcon from "@diligentcorp/atlas-react-bundle/icons/ChartBar";
+import VisibleIcon from "@diligentcorp/atlas-react-bundle/icons/Visible";
+import PolicyIcon from "@diligentcorp/atlas-react-bundle/icons/Policy";
+import WatermarkIcon from "@diligentcorp/atlas-react-bundle/icons/Watermark";
 import QuestionnairesIcon from "@diligentcorp/atlas-react-bundle/icons/Questionnaires";
 import UserManagementIcon from "@diligentcorp/atlas-react-bundle/icons/UserManagement";
 import { NavLink as RouterNavLink, useLocation } from "react-router";
+import DocumentIcon from "@diligentcorp/atlas-react-bundle/icons/Document";
+import { DATA_ROOM_FOLDERS, DATA_ROOM_NAV_FOLDERS } from "./data/demo-products.js";
 import AppNavHeader from "./components/AppNavHeader.js";
 
-type Persona = "admin" | "director";
+type Persona = "admin" | "director" | "dataroom";
 
 function BoardsNavLink() {
   return (
@@ -22,6 +35,7 @@ function BoardsNavLink() {
 
 function usePersona(): Persona {
   const { pathname } = useLocation();
+  if (pathname.startsWith("/data-room")) return "dataroom";
   if (pathname === "/books" || pathname.startsWith("/books/") || pathname.startsWith("/admin")) {
     return "admin";
   }
@@ -84,6 +98,155 @@ function DecisionHubIcon(props: React.ComponentProps<typeof SvgIcon>) {
   );
 }
 
+function TasksNavLink() {
+  const { pathname } = useLocation();
+  return (
+    <RouterNavLink to="/tasks">
+      <NavLink as="span" label="Tasks" isCurrent={pathname === "/tasks" || pathname.startsWith("/tasks/")}>
+        <ClipboardCheckIcon slot="icon" />
+      </NavLink>
+    </RouterNavLink>
+  );
+}
+
+function DecisionHubNavLink() {
+  const { pathname } = useLocation();
+  return (
+    <NavLink label="Decision Hub" as="span" isCurrent={pathname.startsWith("/decision-hub")}>
+      <DecisionHubIcon slot="icon" />
+    </NavLink>
+  );
+}
+
+// Data Room is a separate application: it has its own navigation, with card-style
+// sections (Private workspace, Data rooms, Flows, Organization).
+const FOLDER_ID = /^\/data-room\/([^/]+)/;
+
+function NavCard({ label, trailing, filled }: { label: string; trailing: ReactNode; filled?: boolean }) {
+  const { tokens: { semantic: { color } } } = useTheme();
+  return (
+    <Box
+      sx={{
+        mx: "12px",
+        mb: "8px",
+        border: `1px solid ${color.outline.fixed.value}`,
+        borderRadius: "12px",
+        backgroundColor: filled ? color.surface.variant.value : "transparent",
+        display: "flex",
+        alignItems: "center",
+        px: "12px",
+        height: 48,
+        fontSize: 14,
+        color: color.type.default.value,
+      }}
+    >
+      <Box component="span" sx={{ flex: 1 }}>{label}</Box>
+      {trailing}
+    </Box>
+  );
+}
+
+// A data room: plain row when collapsed, bordered card when open. Selected rooms
+// show the blue label and left bar; the card border itself stays neutral.
+function RoomRow({ label, open, selected, children }: { label: string; open?: boolean; selected?: boolean; children?: ReactNode }) {
+  const { tokens: { semantic: { color } } } = useTheme();
+  const blue = color.action.link.default.value;
+  return (
+    <Box
+      sx={{
+        mx: "12px",
+        mb: "8px",
+        border: `1px solid ${open ? color.outline.fixed.value : "transparent"}`,
+        borderRadius: "12px",
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        sx={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          px: "12px",
+          height: 48,
+          fontSize: 14,
+          color: selected ? blue : color.type.default.value,
+          "&::before": selected
+            ? { content: '""', position: "absolute", left: 0, top: 8, bottom: 8, width: 3, borderRadius: "2px", backgroundColor: blue }
+            : undefined,
+        }}
+      >
+        <TeamDataRoomIcon size="md" />
+        <Box component="span" sx={{ flex: 1 }}>{label}</Box>
+        {open ? <ExpandUpIcon size="md" /> : <ExpandDownIcon size="md" />}
+      </Box>
+      {open && children}
+    </Box>
+  );
+}
+
+function NavRow({ label, icon, current, to, indent }: { label: string; icon?: ReactNode; current?: boolean; to?: string; indent?: boolean }) {
+  const { tokens: { semantic: { color } } } = useTheme();
+  const row = (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        height: indent ? 36 : 48,
+        pl: indent ? "20px" : "12px",
+        pr: "12px",
+        mx: indent ? "4px" : 0,
+        borderRadius: "8px",
+        fontSize: indent ? 13 : 14,
+        color: current ? color.action.link.default.value : color.type.default.value,
+        backgroundColor: current ? color.action.secondary.active.value : "transparent",
+      }}
+    >
+      {icon}
+      {label}
+    </Box>
+  );
+  return to ? <RouterNavLink to={to} style={{ textDecoration: "none", color: "inherit" }}>{row}</RouterNavLink> : row;
+}
+
+function DataRoomNavigation() {
+  const { pathname } = useLocation();
+  const currentFolder = pathname.match(FOLDER_ID)?.[1];
+  return (
+    <>
+      <AppNavHeader />
+      <Box component="nav" aria-label="Data Room" sx={{ pt: "8px" }}>
+        <NavCard label="Private workspace" trailing={<ExpandRightIcon size="md" />} />
+        <NavCard label="Data rooms" filled trailing={<ExpandDownIcon size="md" />} />
+        <RoomRow label="Risk Committee" open selected>
+          <NavRow label="Files" icon={<ExpandDownIcon size="sm" />} />
+          {DATA_ROOM_NAV_FOLDERS.map((id) => (
+            <NavRow
+              key={id}
+              indent
+              to={`/data-room/${id}`}
+              label={DATA_ROOM_FOLDERS[id].title}
+              current={id === currentFolder}
+              icon={id === currentFolder ? <ExpandDownIcon size="sm" /> : <ExpandRightIcon size="sm" />}
+            />
+          ))}
+          <NavRow label="Deleted items" icon={<TrashIcon size="md" />} />
+          <NavRow label="Insights" icon={<ChartBarIcon size="md" />} />
+          <NavRow label="Members and groups" icon={<UserManagementIcon size="md" />} />
+          <NavRow label="Access overview" icon={<VisibleIcon size="md" />} />
+          <NavRow label="Conditions of access" icon={<DocumentIcon size="md" />} />
+          <NavRow label="Policies" icon={<PolicyIcon size="md" />} />
+          <NavRow label="Custom watermark" icon={<WatermarkIcon size="md" />} />
+        </RoomRow>
+        <RoomRow label="Audit Committee" />
+        <NavCard label="Flows" trailing={<ExpandRightIcon size="md" />} />
+        <NavCard label="Organization" trailing={<ExpandRightIcon size="md" />} />
+      </Box>
+    </>
+  );
+}
+
 function DirectorNavigation() {
   return (
     <>
@@ -99,9 +262,8 @@ function DirectorNavigation() {
       <NavLink label="Smart Builder" as="span">
         <SmartBuilderIcon slot="icon" />
       </NavLink>
-      <NavLink label="Decision Hub" as="span">
-        <DecisionHubIcon slot="icon" />
-      </NavLink>
+      <DecisionHubNavLink />
+      <TasksNavLink />
       <NavLink label="Questionnaires" as="span">
         <QuestionnairesIcon slot="icon" />
       </NavLink>
@@ -141,9 +303,8 @@ function AdminNavigation() {
       <NavLink label="Smart Builder" as="span">
         <SmartBuilderIcon slot="icon" />
       </NavLink>
-      <NavLink label="Decision Hub" as="span">
-        <DecisionHubIcon slot="icon" />
-      </NavLink>
+      <DecisionHubNavLink />
+      <TasksNavLink />
       <NavLink label="Questionnaires" as="span">
         <QuestionnairesIcon slot="icon" />
       </NavLink>
@@ -158,5 +319,6 @@ function AdminNavigation() {
 
 export default function Navigation() {
   const persona = usePersona();
+  if (persona === "dataroom") return <DataRoomNavigation />;
   return persona === "admin" ? <AdminNavigation /> : <DirectorNavigation />;
 }

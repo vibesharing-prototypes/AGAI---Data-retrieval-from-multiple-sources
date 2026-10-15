@@ -19,7 +19,7 @@ export const BRANCH_PARAM = "branch";
 // Human-readable label shown in the org switcher / next to the logo.
 export const BRANCH_LABEL: Record<PrototypeBranch, string> = {
   mvp: "MVP",
-  explorations: "ACME Corp",
+  explorations: "Meridian Capital Group",
 };
 
 function isBranch(v: string | null): v is PrototypeBranch {

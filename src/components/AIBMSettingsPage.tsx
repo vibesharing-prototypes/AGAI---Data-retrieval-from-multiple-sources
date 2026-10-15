@@ -338,7 +338,7 @@ export default function AIBMSettingsPage({ open, onClose, onCancel }: AIBMSettin
                     User profile
                   </Typography>
                   <Typography component="p" sx={{ fontSize: "14px", lineHeight: "20px", letterSpacing: "0.2px", color: color.type.muted.value, mt: "4px" }}>
-                    Help AI Board Member to understand you and prioritizes its responses.{" "}
+                    Help Ask GovernAI to understand you and prioritizes its responses.{" "}
                     <Box component="span" sx={{ fontWeight: 600 }}>
                       You can manage this in your{" "}
                       <Link href="#" underline="always" color="primary" onClick={(e) => e.preventDefault()} sx={{ cursor: "pointer", fontWeight: 600 }}>
@@ -368,7 +368,7 @@ export default function AIBMSettingsPage({ open, onClose, onCancel }: AIBMSettin
                         Instructions for AI
                       </Typography>
                       <Typography sx={{ fontSize: "10px", lineHeight: "12px", color: color.type.muted.value, mt: "2px" }}>
-                        Anything the platform AI should know about how you like to work. You can override this instruction here for AI Board Member only.
+                        Anything the platform AI should know about how you like to work. You can override this instruction here for Ask GovernAI only.
                       </Typography>
                     </Box>
                     <Typography sx={{ fontSize: "10px", lineHeight: "12px", color: color.type.muted.value, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
@@ -403,7 +403,7 @@ export default function AIBMSettingsPage({ open, onClose, onCancel }: AIBMSettin
                 <Box>
                   <Typography sx={{ fontSize: "16px", fontWeight: 600, lineHeight: "24px", color: color.type.default.value }}>Company profile</Typography>
                   <Typography sx={{ fontSize: "14px", lineHeight: "20px", letterSpacing: "0.2px", color: color.type.muted.value, mt: "4px" }}>
-                    Help AI Board Member to understand your organization when reading your board materials.{" "}
+                    Help Ask GovernAI to understand your organization when reading your board materials.{" "}
                     <Box component="span" sx={{ fontWeight: 600 }}>This is managed by your admin.</Box>
                   </Typography>
                 </Box>

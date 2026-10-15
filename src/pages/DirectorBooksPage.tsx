@@ -11,10 +11,8 @@ import {
   useTheme,
 } from "@mui/material";
 
-import AiSparkleIcon from "@diligentcorp/atlas-react-bundle/icons/AiSparkle";
-import ColumnsIcon from "@diligentcorp/atlas-react-bundle/icons/Columns";
+import CaretDownIcon from "@diligentcorp/atlas-react-bundle/icons/CaretDown";
 import FilterIcon from "@diligentcorp/atlas-react-bundle/icons/Filter";
-import HistoryIcon from "@diligentcorp/atlas-react-bundle/icons/History";
 import MoreIcon from "@diligentcorp/atlas-react-bundle/icons/More";
 import SearchIcon from "@diligentcorp/atlas-react-bundle/icons/Search";
 import SortIcon from "@diligentcorp/atlas-react-bundle/icons/Sort";
@@ -47,16 +45,7 @@ const textSx = (t: FontToken, weight?: number) => ({
 // ─── Data ────────────────────────────────────────────────────────────────────
 // Directors share the same book list as admins (see `directorBooks` in
 // mockData) — unpublished books are filtered out there, so directors only ever
-// see published + archived books. "Recently visited" is a curated subset.
-
-const recentlyVisited: AdminBook[] = [
-  directorBooks[2],
-  directorBooks[3],
-  directorBooks[0],
-  directorBooks[4],
-  directorBooks[5],
-  directorBooks[1],
-].filter(Boolean);
+// see published + archived books.
 
 // ─── Column widths ───────────────────────────────────────────────────────────
 
@@ -65,69 +54,6 @@ const COL = {
   committee: 220,
   action: 220,
 } as const;
-
-// ─── Header row ──────────────────────────────────────────────────────────────
-
-function HeaderCell({
-  label,
-  width,
-  flex,
-  showSort = true,
-  paddingLeft,
-}: {
-  label: string;
-  width?: number;
-  flex?: number;
-  showSort?: boolean;
-  paddingLeft?: string;
-}) {
-  const {
-    tokens: {
-      semantic: { color, font, fontWeight },
-    },
-  } = useTheme();
-  return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      sx={{
-        width: width ? `${width}px` : undefined,
-        flex,
-        flexShrink: flex ? undefined : 0,
-        minWidth: 0,
-        height: "44px",
-        pl: paddingLeft ?? "12px",
-        pr: "12px",
-        gap: "4px",
-      }}
-    >
-      <Typography
-        sx={{
-          ...textSx(font.text.sm, fontWeight.emphasis.value),
-          // Pin to 12px — hard-coded so a deploy-time Atlas token update can't
-          // shift the column header scale.
-          fontSize: "12px",
-          flex: 1,
-          color: color.type.default.value,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {label}
-      </Typography>
-      {showSort && (
-        <IconButton
-          aria-label={`Sort by ${label}`}
-          size="small"
-          sx={{ width: 24, height: 24, color: color.type.muted.value }}
-        >
-          <SortIcon size="md" />
-        </IconButton>
-      )}
-    </Stack>
-  );
-}
 
 // ─── Body row ────────────────────────────────────────────────────────────────
 
@@ -367,80 +293,6 @@ function BookRow({
   );
 }
 
-// ─── Recently visited card ───────────────────────────────────────────────────
-
-function RecentlyVisitedCard({
-  book,
-  onClick,
-}: {
-  book: AdminBook;
-  onClick?: () => void;
-}) {
-  const {
-    tokens: {
-      semantic: { color, font, fontWeight },
-    },
-  } = useTheme();
-
-  return (
-    <Box
-      component="button"
-      type="button"
-      onClick={onClick}
-      sx={{
-        flexShrink: 0,
-        width: 248,
-        minWidth: 248,
-        maxWidth: 248,
-        backgroundColor: color.surface.default.value,
-        border: `1px solid ${color.ui.divider.default.value}`,
-        borderRadius: "16px",
-        pl: "16px",
-        pr: "20px",
-        py: "20px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-start",
-        gap: "4px",
-        textAlign: "left",
-        cursor: "pointer",
-        transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-        "&:hover": {
-          borderColor: color.outline.default.value,
-          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
-        },
-        "&:focus-visible": {
-          outline: "2px solid #1C4EE4",
-          outlineOffset: "2px",
-        },
-      }}
-    >
-      <Typography
-        sx={{
-          ...textSx(font.text.md, fontWeight.emphasis.value),
-          color: color.type.default.value,
-          width: "100%",
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {book.title}
-      </Typography>
-      <Typography
-        sx={{
-          ...textSx(font.text.md),
-          color: color.type.muted.value,
-        }}
-      >
-        {book.meetingDate}
-      </Typography>
-    </Box>
-  );
-}
-
 // ─── DirectorBooksPage ───────────────────────────────────────────────────────
 
 export default function DirectorBooksPage() {
@@ -479,11 +331,6 @@ export default function DirectorBooksPage() {
   const filtered = directorBooks.filter((b) =>
     b.title.toLowerCase().includes(searchValue.toLowerCase()),
   );
-
-  // Title col left padding for the header row so "Title" sits over the body
-  // title text (40px icon + 12px gap + 12px cell px = 64px; back off 4px so
-  // the sort caret stays inside the title column).
-  const titleHeaderPaddingLeft = "60px";
 
   return (
     <Box sx={{ display: "flex", height: "100%", overflow: "hidden" }}>
@@ -527,82 +374,12 @@ export default function DirectorBooksPage() {
               Books
             </Typography>
 
-            {!panelOpen && !overlayOpen && (
-              <Button
-                variant="outlined"
-                color="ai"
-                startIcon={<AiSparkleIcon size="lg" />}
-                onClick={openSmartAssist}
-                sx={{
-                  fontWeight: 600,
-                  fontSize: "16px",
-                  borderRadius: "12px",
-                  px: "12px",
-                  border: "1px solid transparent !important",
-                  backgroundColor: "transparent !important",
-                  backgroundImage:
-                    "linear-gradient(#fff, #fff), linear-gradient(128deg, #b11f62 17.49%, #1c4ee4 100%) !important",
-                  backgroundOrigin: "border-box !important",
-                  backgroundClip: "padding-box, border-box !important",
-                  "&::before": { display: "none" },
-                  "&:hover, &:not(.Mui-disabled):hover": {
-                    border: "1px solid transparent !important",
-                    backgroundColor: "transparent !important",
-                    backgroundImage:
-                      "linear-gradient(#f3f3f3, #f3f3f3), linear-gradient(128deg, #b11f62 17.49%, #1c4ee4 100%) !important",
-                    backgroundOrigin: "border-box !important",
-                    backgroundClip: "padding-box, border-box !important",
-                  },
-                  "&:hover::before, &::after, &:hover::after": { display: "none" },
-                }}
-              >
-                Ask GovernAI
-              </Button>
-            )}
-          </Stack>
-
-          {/* Recently visited */}
-          <Stack sx={{ mt: "24px", gap: "12px" }}>
-            <Stack direction="row" alignItems="center" gap="8px">
-              <Box sx={{ display: "inline-flex", color: color.type.default.value }}>
-                <HistoryIcon size="md" />
-              </Box>
-              <Typography
-                sx={{
-                  ...textSx(font.text.body),
-                  color: color.type.default.value,
-                }}
-              >
-                Recently visited
-              </Typography>
-            </Stack>
-            <Box
-              sx={{
-                display: "flex",
-                gap: "16px",
-                overflowX: "auto",
-                overflowY: "hidden",
-                pb: "4px",
-                // Hide horizontal scrollbar visually while keeping scroll behavior.
-                scrollbarWidth: "none",
-                "&::-webkit-scrollbar": { display: "none" },
-              }}
-            >
-              {recentlyVisited.map((book) => (
-                <RecentlyVisitedCard
-                  key={book.id}
-                  book={book}
-                  onClick={() => navigate(`/director/books/${book.id}`, { state: { from: "/director/books" } })}
-                />
-              ))}
-            </Box>
           </Stack>
 
           {/* Toolbar */}
           <Stack direction="row" alignItems="center" gap="16px" sx={{ mt: "24px" }}>
             <TextField
               placeholder="Search"
-              size="small"
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               InputProps={{
@@ -616,39 +393,23 @@ export default function DirectorBooksPage() {
             />
             <Button
               variant="text"
+              startIcon={<SortIcon size="lg" />}
+              endIcon={<CaretDownIcon size="md" />}
+              sx={{ color: color.type.default.value, textTransform: "none" }}
+            >
+              Meeting date
+            </Button>
+            <Button
+              variant="text"
               startIcon={<FilterIcon size="lg" />}
               sx={{ color: color.type.default.value, textTransform: "none" }}
             >
               Filter
             </Button>
-            <Button
-              variant="text"
-              startIcon={<ColumnsIcon size="lg" />}
-              sx={{ color: color.type.default.value, textTransform: "none" }}
-            >
-              Column
-            </Button>
           </Stack>
 
           {/* Table */}
           <Box sx={{ mt: "16px" }}>
-            {/* Column headers */}
-            <Stack direction="row" alignItems="stretch">
-              <HeaderCell label="Title" flex={1} paddingLeft={titleHeaderPaddingLeft} />
-              <HeaderCell
-                label="Meeting date"
-                width={COL.meetingDate}
-              />
-              {showCommittee && (
-                <HeaderCell
-                  label="Committee"
-                  width={COL.committee}
-                  showSort={false}
-                />
-              )}
-              <Box sx={{ width: `${COL.action}px`, flexShrink: 0 }} />
-            </Stack>
-
             {/* Body card */}
             <Box
               sx={{

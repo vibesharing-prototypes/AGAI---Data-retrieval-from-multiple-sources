@@ -442,7 +442,11 @@ export default function DirectorBookReaderPage() {
   // location.state. Those legacy books have no assembled-page set of their own,
   // so the reader renders the cited document's own pages instead of the generic
   // boardroom mock — that's how single-document citations open "in the book".
-  const navState = location.state as { documentId?: string; documentPage?: number; from?: string } | null;
+  const queryDocId = new URLSearchParams(location.search).get("documentId");
+  const navState = (location.state as { documentId?: string; documentPage?: number; from?: string } | null)
+    ?? (queryDocId
+      ? { documentId: queryDocId, documentPage: Number(new URLSearchParams(location.search).get("documentPage")) || 1 }
+      : null);
   const backDestRef = useRef<string>(navState?.from ?? "/director");
   const stateDoc =
     !isQ2BoardPackage && navState?.documentId && navState.documentId in DOCUMENTS
@@ -580,7 +584,7 @@ export default function DirectorBookReaderPage() {
   // the assembled-book page space; for a non-Q2 book the reader is already
   // showing the cited document's own pages, so scroll straight to that page.
   useEffect(() => {
-    const state = location.state as { documentId?: string; documentPage?: number } | null;
+    const state = navState;
     if (!state?.documentId || !(state.documentId in DOCUMENTS)) return;
     const bookPage = stateDoc
       ? state.documentPage ?? 1
